@@ -1,0 +1,20 @@
+<resources>
+    <string name="app_name">FreeVolaba</string>
+    <string name="label_time">TIME</string>
+    <string name="target_min_format">/ %d min</string>
+    <string name="label_rpm">RPM</string>
+    <string name="label_heart_rate">HEART RATE</string>
+    <string name="label_speed">SPEED</string>
+    <string name="label_distance">DISTANCE</string>
+    <string name="label_resistance">RESISTANCE</string>
+    <string name="val_min">MIN</string>
+    <string name="val_max">MAX</string>
+    <string name="desc_start_training">Start Training</string>
+    <string name="desc_resume_training">Resume Training</string>
+    <string name="desc_pause_training">Pause Training</string>
+    <string name="desc_stop_training">Stop Training</string>
+    <string name="chart_legend_header">RESISTANCE · RPM · HEART RATE</string>
+    <string name="chart_waiting_data">Waiting for training data...</string>
+    <string name="notification_title">Workout in progress</string>
+    <string name="notification_text">Recording bike telemetry</string>
+</resources>

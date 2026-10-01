@@ -1,0 +1,20 @@
+<resources>
+    <string name="app_name">FreeVolaba</string>
+    <string name="label_time">TIEMPO</string>
+    <string name="target_min_format">/ %d min</string>
+    <string name="label_rpm">RPM</string>
+    <string name="label_heart_rate">PULSACIONES</string>
+    <string name="label_speed">VELOCIDAD</string>
+    <string name="label_distance">DISTANCIA</string>
+    <string name="label_resistance">RESISTENCIA</string>
+    <string name="val_min">MIN</string>
+    <string name="val_max">MAX</string>
+    <string name="desc_start_training">Iniciar Entrenamiento</string>
+    <string name="desc_resume_training">Reanudar Entrenamiento</string>
+    <string name="desc_pause_training">Pausar Entrenamiento</string>
+    <string name="desc_stop_training">Detener Entrenamiento</string>
+    <string name="chart_legend_header">RESISTENCIA · RPM · PULSACIONES</string>
+    <string name="chart_waiting_data">Esperando datos para la gráfica...</string>
+    <string name="notification_title">Entrenamiento en marcha</string>
+    <string name="notification_text">Grabando datos de la bici</string>
+</resources>

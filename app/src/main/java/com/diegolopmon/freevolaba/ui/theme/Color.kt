@@ -1,0 +1,12 @@
+package com.diegolopmon.freevolaba.ui.theme
+
+import androidx.compose.ui.graphics.Color
+
+val Purple80 = Color(0xFFD0BCFF)
+val PurpleGrey80 = Color(0xFFCCC2DC)
+val Pink80 = Color(0xFFEFB8C8)
+
+// Intensity scale colors
+val ResistanceLowColor = Color(0xFF4CAF50)    // Green
+val ResistanceMediumColor = Color(0xFFFFEB3B) // Yellow
+val ResistanceHighColor = Color(0xFFF44336)   // Red

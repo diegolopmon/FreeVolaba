@@ -1,0 +1,197 @@
+package com.diegolopmon.freevolaba.training
+
+import android.app.NotificationChannel
+import android.app.NotificationManager
+import android.app.Service
+import android.content.Context
+import android.content.Intent
+import android.os.Build
+import android.os.IBinder
+import android.util.Log
+import androidx.core.app.NotificationCompat
+import com.diegolopmon.freevolaba.sensor.SensorData
+import com.diegolopmon.freevolaba.sensor.SensorDataDecoder
+import com.diegolopmon.freevolaba.sensor.SensorDataRecorder
+import com.diegolopmon.freevolaba.sensor.SensorFactory
+import com.diegolopmon.freevolaba.sensor.SensorSource
+import kotlinx.coroutines.CoroutineScope
+import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.SupervisorJob
+import kotlinx.coroutines.flow.MutableStateFlow
+import kotlinx.coroutines.flow.StateFlow
+import kotlinx.coroutines.flow.asStateFlow
+import kotlin.math.roundToInt
+
+class TrainingService : Service() {
+
+    private lateinit var sensor: SensorSource
+    private val sensorDataDecoder = SensorDataDecoder()
+    private lateinit var sensorDataRecorder: SensorDataRecorder
+    private val sessionHistory = TrainingSessionHistory()
+    private var previousElapsedTimeSeconds = 0L
+
+    companion object {
+        private const val CHANNEL_ID = "training_channel"
+        private const val NOTIFICATION_ID = 1
+        private const val TAG = "TrainingService"
+        private const val DEADBAND = 600
+        private const val METERS_PER_REV = 3
+
+        const val ACTION_PAUSE = "com.diegolopmon.freevolaba.action.PAUSE"
+        const val ACTION_RESUME = "com.diegolopmon.freevolaba.action.RESUME"
+
+        fun pause(context: Context) {
+            val intent = Intent(context, TrainingService::class.java).apply {
+                action = ACTION_PAUSE
+            }
+            context.startService(intent)
+        }
+
+        fun resume(context: Context) {
+            val intent = Intent(context, TrainingService::class.java).apply {
+                action = ACTION_RESUME
+            }
+            context.startService(intent)
+        }
+
+        private val _currentTrainingData = MutableStateFlow(TrainingData())
+        val trainingDataState: StateFlow<TrainingData> = _currentTrainingData.asStateFlow()
+
+        private val _historyState = MutableStateFlow<List<TrainingHistoryPoint>>(emptyList())
+        val historyState: StateFlow<List<TrainingHistoryPoint>> = _historyState.asStateFlow()
+
+        private val _isRunning = MutableStateFlow(false)
+        val isRunningState: StateFlow<Boolean> = _isRunning.asStateFlow()
+
+        val chronometer = Chronometer(CoroutineScope(SupervisorJob() + Dispatchers.Default))
+
+    }
+
+    override fun onCreate() {
+        super.onCreate()
+        startForeground(NOTIFICATION_ID, buildNotification())
+        sensorDataRecorder = SensorDataRecorder(this)
+        sessionHistory.startSession()
+        _historyState.value = emptyList()
+        previousElapsedTimeSeconds = 0L
+        sensor = SensorFactory.create(this)
+        sensor.initialize(::processSensorData)
+        chronometer.start()
+        _isRunning.value = true
+    }
+
+    override fun onStartCommand(intent: Intent?, flags: Int, startId: Int): Int {
+        when (intent?.action) {
+            ACTION_PAUSE -> onPause()
+            ACTION_RESUME -> onResume()
+        }
+        return START_STICKY
+    }
+
+    override fun onBind(intent: Intent?): IBinder? {
+        return null
+    }
+
+    override fun onDestroy() {
+        super.onDestroy()
+        sensor.close()
+        sensorDataRecorder.close()
+        _currentTrainingData.value = TrainingData()
+        _historyState.value = emptyList()
+        chronometer.stop()
+        _isRunning.value = false
+        sessionHistory.clear()
+    }
+
+    fun onPause() {
+        chronometer.pause()
+    }
+
+    fun onResume() {
+        chronometer.start()
+        previousElapsedTimeSeconds = chronometer.elapsedTimeSeconds.value
+    }
+
+    private fun buildNotification(): android.app.Notification {
+        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.O) {
+            val channel = NotificationChannel(
+                CHANNEL_ID, "Entrenamiento", NotificationManager.IMPORTANCE_LOW
+            )
+            val manager = getSystemService(NotificationManager::class.java)
+            manager.createNotificationChannel(channel)
+        }
+
+        return NotificationCompat.Builder(this, CHANNEL_ID)
+            .setContentTitle("Entrenamiento en marcha")
+            .setContentText("Grabando datos de la bici")
+            .setSmallIcon(android.R.drawable.ic_menu_mylocation) // sustitúyelo por tu icono
+            .setOngoing(true)
+            .build()
+    }
+
+    private fun processSensorData(data: ByteArray) {
+        val message = data.decodeToString()
+        val sensorData = sensorDataDecoder.decodeSensorData(message)
+        sensorDataRecorder.record(sensorData)
+
+        if (sensorData != null) {
+            val tracking = calculateTrackingData(sensorData, _currentTrainingData.value)
+            _currentTrainingData.value = tracking
+            sessionHistory.addPoint(chronometer.elapsedTimeSeconds.value, tracking)
+            _historyState.value = sessionHistory.points.toList()
+
+            Log.d(
+                TAG,
+                "Received valid message: ${sensorData.rawMessage} -> RPM: ${tracking.rpm}, Resistance: ${tracking.resistance}, Speed: ${tracking.speed} km/h, Distance: ${tracking.distance} m"
+            )
+        } else {
+            Log.w(TAG, "Received invalid message: $message")
+        }
+    }
+
+    // Calculation methods
+    private fun calculateRPM(rawRPM: Int): Int {
+        if (rawRPM < DEADBAND) return 0
+        return (rawRPM / 100)
+    }
+
+    private fun calculateResistance(rawResistance: Int): Int {
+        val minRaw = 500
+        val maxRaw = 1800
+        val clampedRaw = rawResistance.coerceIn(minRaw, maxRaw)
+
+        // Inverted linear mapping using integer arithmetic: 1800 -> 1, 500 -> 10
+        val numerator = maxRaw - clampedRaw
+        val denominator = maxRaw - minRaw
+        val mapped = 1 + (numerator * 9) / denominator
+
+        return mapped.coerceIn(1, 10)
+    }
+
+    private fun calculateDeltaDistance(rpm: Int, currentDistance: Int, previousElapsed: Long, currentElapsed: Long): Int {
+        val deltaSeconds = currentElapsed - previousElapsed
+        if (deltaSeconds <= 0) return currentDistance
+
+        val deltaMeters = rpm * METERS_PER_REV * (deltaSeconds.toDouble() / 60.0)
+        return (currentDistance + deltaMeters).roundToInt()
+    }
+
+    private fun calculateSpeed(rpm: Int): Int {
+        return Math.round(rpm * METERS_PER_REV * 0.06).toInt()
+    }
+
+    private fun calculateTrackingData(sensorData: SensorData, trainingData: TrainingData): TrainingData {
+        val rpm = calculateRPM(sensorData.rpm)
+        val currentElapsed = chronometer.elapsedTimeSeconds.value
+        val newDistance = calculateDeltaDistance(rpm, trainingData.distance, previousElapsedTimeSeconds, currentElapsed)
+        previousElapsedTimeSeconds = currentElapsed
+
+        return TrainingData(
+            rpm = rpm,
+            resistance = calculateResistance(sensorData.resistance),
+            distance = newDistance,
+            speed = calculateSpeed(rpm),
+            heartRate = 0
+        )
+    }
+}

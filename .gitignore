@@ -1,0 +1,21 @@
+# Built application files
+*.apk
+*.ap_
+*.aab
+
+# Files for the Signkey
+*.jks
+*.keystore
+
+# Android / Gradle / IDE
+*.iml
+.gradle
+/local.properties
+/.idea
+.DS_Store
+/build
+/app/build
+/captures
+.externalNativeBuild
+.cxx
+local.properties
