@@ -1,6 +1,6 @@
 package com.diegolopmon.freevolaba.training
 
-import android.R
+import android.R.drawable.ic_menu_mylocation
 import android.app.Notification
 import android.app.NotificationChannel
 import android.app.NotificationManager
@@ -131,7 +131,7 @@ class TrainingService : Service() {
         return NotificationCompat.Builder(this, CHANNEL_ID)
             .setContentTitle("Entrenamiento en marcha")
             .setContentText("Grabando datos de la bici")
-            .setSmallIcon(R.drawable.ic_menu_mylocation) // Replace with your app icon
+            .setSmallIcon(ic_menu_mylocation) // Replace with your app icon
             .setOngoing(true)
             .build()
     }

@@ -16,7 +16,7 @@
     <string name="desc_pause_training">Pausar Entrenamiento</string>
     <string name="desc_stop_training">Detener Entrenamiento</string>
     <string name="chart_legend_header">RESISTENCIA · RPM · PULSACIONES</string>
-    <string name="chart_waiting_data">Esperando datos para la gráfica...</string>
+    <string name="chart_waiting_data">Esperando datos para la gráfica…</string>
     <string name="notification_title">Entrenamiento en marcha</string>
     <string name="notification_text">Grabando datos de la bici</string>
 </resources>

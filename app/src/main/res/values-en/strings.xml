@@ -16,7 +16,7 @@
     <string name="desc_pause_training">Pause Training</string>
     <string name="desc_stop_training">Stop Training</string>
     <string name="chart_legend_header">RESISTANCE · RPM · HEART RATE</string>
-    <string name="chart_waiting_data">Waiting for training data...</string>
+    <string name="chart_waiting_data">Waiting for training data…</string>
     <string name="notification_title">Workout in progress</string>
     <string name="notification_text">Recording bike telemetry</string>
 </resources>
