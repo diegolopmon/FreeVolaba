@@ -20,6 +20,8 @@ class Chronometer(
 ) {
     private val _elapsedTimeSeconds = MutableStateFlow(0L)
     val elapsedTimeSeconds: StateFlow<Long> = _elapsedTimeSeconds.asStateFlow()
+    private val _elapsedTimeMillis = MutableStateFlow(0L)
+    val elapsedTimeMillis: StateFlow<Long> = _elapsedTimeMillis.asStateFlow()
 
     private val _isRunning = MutableStateFlow(false)
 
@@ -46,7 +48,9 @@ class Chronometer(
         mark = null
         tickerJob?.cancel()
         tickerJob = null
-        _elapsedTimeSeconds.value = accumulated.inWholeSeconds
+        val elapsed = currentElapsed()
+        _elapsedTimeSeconds.value = elapsed.inWholeSeconds
+        _elapsedTimeMillis.value = elapsed.inWholeMilliseconds
         _isRunning.value = false
         _isPaused.value = true
     }
@@ -58,6 +62,7 @@ class Chronometer(
         mark = null
         accumulated = ZERO
         _elapsedTimeSeconds.value = 0L
+        _elapsedTimeMillis.value = 0L
         _isRunning.value = false
         _isPaused.value = false
     }
@@ -65,7 +70,9 @@ class Chronometer(
     private fun startTicker() {
         tickerJob = scope.launch {
             while (isActive) {
-                _elapsedTimeSeconds.value = currentElapsed().inWholeSeconds
+                val elapsed = currentElapsed()
+                _elapsedTimeSeconds.value = elapsed.inWholeSeconds
+                _elapsedTimeMillis.value = elapsed.inWholeMilliseconds
                 delay(tickMillis.milliseconds)
             }
         }

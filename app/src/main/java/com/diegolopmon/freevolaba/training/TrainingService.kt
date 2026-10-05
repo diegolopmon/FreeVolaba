@@ -1,5 +1,7 @@
 package com.diegolopmon.freevolaba.training
 
+import android.R
+import android.app.Notification
 import android.app.NotificationChannel
 import android.app.NotificationManager
 import android.app.Service
@@ -28,14 +30,19 @@ class TrainingService : Service() {
     private val sensorDataDecoder = SensorDataDecoder()
     private lateinit var sensorDataRecorder: SensorDataRecorder
     private val sessionHistory = TrainingSessionHistory()
-    private var previousElapsedTimeSeconds = 0L
+    private var previousElapsedTimeMillis = 0L
 
     companion object {
         private const val CHANNEL_ID = "training_channel"
         private const val NOTIFICATION_ID = 1
         private const val TAG = "TrainingService"
         private const val DEADBAND = 600
-        private const val METERS_PER_REV = 3
+        private const val VIRTUAL_GEAR_METERS_PER_REV =
+            3        // Chosen virtual gear, used for distance and speed
+        private const val ERGOMETER_FLYWHEEL_METERS_PER_REV =
+            6.0 // Monark convention, used only for the power formula
+        private const val KP_PER_LEVEL = 0.3
+        private const val KGF_M_MIN_TO_WATTS = 0.1635
 
         const val ACTION_PAUSE = "com.diegolopmon.freevolaba.action.PAUSE"
         const val ACTION_RESUME = "com.diegolopmon.freevolaba.action.RESUME"
@@ -73,7 +80,7 @@ class TrainingService : Service() {
         sensorDataRecorder = SensorDataRecorder(this)
         sessionHistory.startSession()
         _historyState.value = emptyList()
-        previousElapsedTimeSeconds = 0L
+        previousElapsedTimeMillis = 0L
         sensor = SensorFactory.create(this)
         sensor.initialize(::processSensorData)
         chronometer.start()
@@ -109,10 +116,10 @@ class TrainingService : Service() {
 
     fun onResume() {
         chronometer.start()
-        previousElapsedTimeSeconds = chronometer.elapsedTimeSeconds.value
+        previousElapsedTimeMillis = chronometer.elapsedTimeMillis.value
     }
 
-    private fun buildNotification(): android.app.Notification {
+    private fun buildNotification(): Notification {
         if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.O) {
             val channel = NotificationChannel(
                 CHANNEL_ID, "Entrenamiento", NotificationManager.IMPORTANCE_LOW
@@ -124,12 +131,13 @@ class TrainingService : Service() {
         return NotificationCompat.Builder(this, CHANNEL_ID)
             .setContentTitle("Entrenamiento en marcha")
             .setContentText("Grabando datos de la bici")
-            .setSmallIcon(android.R.drawable.ic_menu_mylocation) // sustitúyelo por tu icono
+            .setSmallIcon(R.drawable.ic_menu_mylocation) // Replace with your app icon
             .setOngoing(true)
             .build()
     }
 
     private fun processSensorData(data: ByteArray) {
+        if (chronometer.isPaused.value) return
         val message = data.decodeToString()
         val sensorData = sensorDataDecoder.decodeSensorData(message)
         sensorDataRecorder.record(sensorData)
@@ -152,7 +160,7 @@ class TrainingService : Service() {
     // Calculation methods
     private fun calculateRPM(rawRPM: Int): Int {
         if (rawRPM < DEADBAND) return 0
-        return (rawRPM / 100)
+        return (rawRPM + 50) / 100
     }
 
     private fun calculateResistance(rawResistance: Int): Int {
@@ -168,30 +176,75 @@ class TrainingService : Service() {
         return mapped.coerceIn(1, 10)
     }
 
-    private fun calculateDeltaDistance(rpm: Int, currentDistance: Int, previousElapsed: Long, currentElapsed: Long): Int {
-        val deltaSeconds = currentElapsed - previousElapsed
-        if (deltaSeconds <= 0) return currentDistance
+    private fun calculateDeltaDistance(
+        rpm: Int,
+        currentDistance: Int,
+        previousElapsedMillis: Long,
+        currentElapsedMillis: Long
+    ): Int {
+        val deltaMillis = currentElapsedMillis - previousElapsedMillis
+        if (deltaMillis <= 0) return currentDistance
 
-        val deltaMeters = rpm * METERS_PER_REV * (deltaSeconds.toDouble() / 60.0)
+        val deltaMeters = rpm * VIRTUAL_GEAR_METERS_PER_REV * (deltaMillis / 60000.0)
         return (currentDistance + deltaMeters).roundToInt()
     }
 
-    private fun calculateSpeed(rpm: Int): Int {
-        return Math.round(rpm * METERS_PER_REV * 0.06).toInt()
+    private fun calculateCalories(
+        powerWatts: Int,
+        previousCalories: Double,
+        previousElapsedMillis: Long,
+        currentElapsedMillis: Long
+    ): Double {
+        val deltaMillis = currentElapsedMillis - previousElapsedMillis
+        if (deltaMillis <= 0 || powerWatts <= 0) return previousCalories
+
+        val metabolicWatts = powerWatts / 0.21
+        val deltaKcal = metabolicWatts * (deltaMillis / 1000.0) / 4184.0
+        return previousCalories + deltaKcal
     }
 
-    private fun calculateTrackingData(sensorData: SensorData, trainingData: TrainingData): TrainingData {
+    private fun calculateSpeed(rpm: Int): Int {
+        return (rpm * VIRTUAL_GEAR_METERS_PER_REV * 0.06).roundToInt()
+    }
+
+    private fun calculatePower(rpm: Int, resistanceLevel: Int): Int {
+        if (rpm == 0) return 0
+        val brakeForceKp = resistanceLevel * KP_PER_LEVEL
+        val watts = brakeForceKp * ERGOMETER_FLYWHEEL_METERS_PER_REV * rpm * KGF_M_MIN_TO_WATTS
+        return watts.roundToInt()
+    }
+
+    private fun calculateTrackingData(
+        sensorData: SensorData,
+        trainingData: TrainingData
+    ): TrainingData {
         val rpm = calculateRPM(sensorData.rpm)
-        val currentElapsed = chronometer.elapsedTimeSeconds.value
-        val newDistance = calculateDeltaDistance(rpm, trainingData.distance, previousElapsedTimeSeconds, currentElapsed)
-        previousElapsedTimeSeconds = currentElapsed
+        val resistance = calculateResistance(sensorData.resistance)
+        val power = calculatePower(rpm, resistance)
+        val currentElapsedMillis = chronometer.elapsedTimeMillis.value
+
+        val newDistance = calculateDeltaDistance(
+            rpm,
+            trainingData.distance,
+            previousElapsedTimeMillis,
+            currentElapsedMillis
+        )
+        val newCalories = calculateCalories(
+            power,
+            trainingData.calories,
+            previousElapsedTimeMillis,
+            currentElapsedMillis
+        )
+        previousElapsedTimeMillis = currentElapsedMillis
 
         return TrainingData(
             rpm = rpm,
-            resistance = calculateResistance(sensorData.resistance),
+            resistance = resistance,
             distance = newDistance,
             speed = calculateSpeed(rpm),
-            heartRate = 0
+            heartRate = 0,
+            calories = newCalories,
+            power = power
         )
     }
 }

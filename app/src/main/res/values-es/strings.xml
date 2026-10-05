@@ -7,6 +7,8 @@
     <string name="label_speed">VELOCIDAD</string>
     <string name="label_distance">DISTANCIA</string>
     <string name="label_resistance">RESISTENCIA</string>
+    <string name="label_power">POTENCIA</string>
+    <string name="label_calories">CALORÍAS</string>
     <string name="val_min">MIN</string>
     <string name="val_max">MAX</string>
     <string name="desc_start_training">Iniciar Entrenamiento</string>
