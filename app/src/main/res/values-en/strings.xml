@@ -7,6 +7,8 @@
     <string name="label_speed">SPEED</string>
     <string name="label_distance">DISTANCE</string>
     <string name="label_resistance">RESISTANCE</string>
+    <string name="label_power">POWER</string>
+    <string name="label_calories">CALORIES</string>
     <string name="val_min">MIN</string>
     <string name="val_max">MAX</string>
     <string name="desc_start_training">Start Training</string>
@@ -14,7 +16,7 @@
     <string name="desc_pause_training">Pause Training</string>
     <string name="desc_stop_training">Stop Training</string>
     <string name="chart_legend_header">RESISTANCE · RPM · HEART RATE</string>
-    <string name="chart_waiting_data">Waiting for training data...</string>
+    <string name="chart_waiting_data">Waiting for training data…</string>
     <string name="notification_title">Workout in progress</string>
     <string name="notification_text">Recording bike telemetry</string>
 </resources>

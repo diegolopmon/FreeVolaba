@@ -59,6 +59,7 @@ import com.diegolopmon.freevolaba.ui.theme.ResistanceLowColor
 import com.diegolopmon.freevolaba.ui.theme.ResistanceMediumColor
 import kotlinx.coroutines.delay
 import java.util.Date
+import java.util.Locale
 import kotlin.time.Duration.Companion.milliseconds
 
 private const val TARGET_TRAINING_SECONDS = 600L // 10 minutos iniciales
@@ -298,7 +299,7 @@ fun TopDashboard(
     ) {
         MetricCard(
             label = stringResource(R.string.label_rpm),
-            value = "${trainingData.rpm}",
+            value = trainingData.rpm.toString(),
             unit = "rpm",
             modifier = Modifier
                 .weight(1f)
@@ -307,7 +308,7 @@ fun TopDashboard(
         )
         MetricCard(
             label = stringResource(R.string.label_heart_rate),
-            value = if (trainingData.heartRate > 0) "${trainingData.heartRate}" else "--",
+            value = if (trainingData.heartRate > 0) trainingData.heartRate.toString() else "--",
             unit = "bpm",
             modifier = Modifier
                 .weight(1f)
@@ -316,7 +317,7 @@ fun TopDashboard(
         )
         MetricCard(
             label = stringResource(R.string.label_speed),
-            value = "${trainingData.speed}",
+            value = trainingData.speed.toString(),
             unit = "km/h",
             modifier = Modifier
                 .weight(1f)
@@ -325,12 +326,30 @@ fun TopDashboard(
         )
         MetricCard(
             label = stringResource(R.string.label_distance),
-            value = "${trainingData.distance}",
+            value = trainingData.distance.toString(),
             unit = "m",
             modifier = Modifier
                 .weight(1f)
                 .fillMaxHeight()
-                .padding(start = 6.dp)
+                .padding(horizontal = 3.dp)
+        )
+        MetricCard(
+            label = stringResource(R.string.label_power),
+            value = trainingData.power.toString(),
+            unit = "W",
+            modifier = Modifier
+                .weight(1f)
+                .fillMaxHeight()
+                .padding(horizontal = 3.dp)
+        )
+        MetricCard(
+            label = stringResource(R.string.label_calories),
+            value = String.format(Locale.getDefault(), "%.1f", trainingData.calories),
+            unit = "kcal",
+            modifier = Modifier
+                .weight(1f)
+                .fillMaxHeight()
+                .padding(horizontal = 3.dp)
         )
         val resistanceColor = getResistanceColor(trainingData.resistance)
         MetricCard(
@@ -338,14 +357,14 @@ fun TopDashboard(
             value = when (trainingData.resistance) {
                 1 -> stringResource(R.string.val_min)
                 10 -> stringResource(R.string.val_max)
-                else -> "${trainingData.resistance}"
+                else -> trainingData.resistance.toString()
             },
             unit = "",
             valueColor = resistanceColor,
             modifier = Modifier
                 .weight(1f)
                 .fillMaxHeight()
-                .padding(start = 6.dp)
+                .padding(start = 3.dp)
         )
     }
 }
@@ -408,10 +427,26 @@ fun MetricCard(
 fun TrackingControlScreenRunningPreview() {
     val mockHistory = remember {
         listOf(
-            TrainingHistoryPoint(Date(), 0L, TrainingData(rpm = 70, resistance = 4, heartRate = 120)),
-            TrainingHistoryPoint(Date(), 2L, TrainingData(rpm = 75, resistance = 5, heartRate = 125)),
-            TrainingHistoryPoint(Date(), 4L, TrainingData(rpm = 80, resistance = 5, heartRate = 130)),
-            TrainingHistoryPoint(Date(), 6L, TrainingData(rpm = 85, resistance = 6, heartRate = 135))
+            TrainingHistoryPoint(Date(), 0L, TrainingData(
+                rpm = 70,
+                resistance = 4,
+                heartRate = 120,
+            )),
+            TrainingHistoryPoint(Date(), 2L, TrainingData(
+                rpm = 75,
+                resistance = 5,
+                heartRate = 125,
+            )),
+            TrainingHistoryPoint(Date(), 4L, TrainingData(
+                rpm = 80,
+                resistance = 5,
+                heartRate = 130,
+            )),
+            TrainingHistoryPoint(Date(), 6L, TrainingData(
+                rpm = 85,
+                resistance = 6,
+                heartRate = 135,
+            ))
         )
     }
     FreeVolabaTheme {
@@ -422,7 +457,13 @@ fun TrackingControlScreenRunningPreview() {
             TrackingControlContent(
                 isRunning = true,
                 isPaused = false,
-                trainingData = TrainingData(rpm = 85, resistance = 10, distance = 1200, speed = 28, heartRate = 135),
+                trainingData = TrainingData(
+                    rpm = 85,
+                    resistance = 10,
+                    distance = 1200,
+                    speed = 28,
+                    heartRate = 135,
+                ),
                 elapsedTime = 225L, // 03:45
                 historyPoints = mockHistory,
                 onStart = {},
