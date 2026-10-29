@@ -53,13 +53,14 @@ import com.diegolopmon.freevolaba.training.TrainingData
 import com.diegolopmon.freevolaba.training.TrainingHistoryPoint
 import com.diegolopmon.freevolaba.training.TrainingService
 import com.diegolopmon.freevolaba.ui.TrainingChart
+import com.diegolopmon.freevolaba.ui.WorkoutSummaryDialog
 import com.diegolopmon.freevolaba.ui.theme.FreeVolabaTheme
 import com.diegolopmon.freevolaba.ui.theme.ResistanceHighColor
 import com.diegolopmon.freevolaba.ui.theme.ResistanceLowColor
 import com.diegolopmon.freevolaba.ui.theme.ResistanceMediumColor
 import kotlinx.coroutines.delay
 import java.util.Date
-import java.util.Locale
+import kotlin.math.roundToInt
 import kotlin.time.Duration.Companion.milliseconds
 
 private const val TARGET_TRAINING_SECONDS = 600L // 10 minutos iniciales
@@ -87,6 +88,7 @@ fun TrackingControlScreen(modifier: Modifier = Modifier) {
     val isRunning by TrainingService.isRunningState.collectAsState()
     val isPaused by TrainingService.chronometer.isPaused.collectAsState()
     val historyPoints by TrainingService.historyState.collectAsState()
+    val lastSummary by TrainingService.lastSummaryState.collectAsState()
 
     val initialTracking = remember { TrainingService.trainingDataState.value }
     val trainingData by produceState(initialValue = initialTracking) {
@@ -115,11 +117,20 @@ fun TrackingControlScreen(modifier: Modifier = Modifier) {
             }
         },
         onStop = {
-            val intent = Intent(context, TrainingService::class.java)
-            context.stopService(intent)
+            TrainingService.stopAndSummarize(context)
         },
         modifier = modifier
     )
+
+    lastSummary?.let { summary ->
+        WorkoutSummaryDialog(
+            summary = summary,
+            historyPoints = summary.historyPoints,
+            onDismiss = {
+                TrainingService.clearSummary()
+            }
+        )
+    }
 }
 
 @Composable
@@ -344,7 +355,7 @@ fun TopDashboard(
         )
         MetricCard(
             label = stringResource(R.string.label_calories),
-            value = String.format(Locale.getDefault(), "%.1f", trainingData.calories),
+            value = trainingData.calories.roundToInt().toString(),
             unit = "kcal",
             modifier = Modifier
                 .weight(1f)

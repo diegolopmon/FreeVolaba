@@ -19,4 +19,13 @@
     <string name="chart_waiting_data">Esperando datos para la gráfica…</string>
     <string name="notification_title">Entrenamiento en marcha</string>
     <string name="notification_text">Grabando datos de la bici</string>
+
+    <string name="summary_title">Resumen de Entrenamiento</string>
+    <string name="summary_saved">Entrenamiento guardado en el historial</string>
+    <string name="label_avg_power">POTENCIA MEDIA</string>
+    <string name="label_max_power">POTENCIA MÁX.</string>
+    <string name="label_avg_rpm">RPM MEDIA</string>
+    <string name="label_max_rpm">RPM MÁX.</string>
+    <string name="label_avg_resistance">RESISTENCIA MEDIA</string>
+    <string name="btn_done">Aceptar</string>
 </resources>

@@ -19,4 +19,13 @@
     <string name="chart_waiting_data">Waiting for training data…</string>
     <string name="notification_title">Workout in progress</string>
     <string name="notification_text">Recording bike telemetry</string>
+
+    <string name="summary_title">Workout Summary</string>
+    <string name="summary_saved">Workout saved to history</string>
+    <string name="label_avg_power">AVG POWER</string>
+    <string name="label_max_power">MAX POWER</string>
+    <string name="label_avg_rpm">AVG RPM</string>
+    <string name="label_max_rpm">MAX RPM</string>
+    <string name="label_avg_resistance">AVG RESISTANCE</string>
+    <string name="btn_done">Done</string>
 </resources>

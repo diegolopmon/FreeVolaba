@@ -35,7 +35,7 @@ class FakeSensor(
                 for (part in parts) {
                     if (!isActive) break
                     if (part.isNotEmpty()) {
-                        val packet = "$" + part
+                        val packet = "$$part"
                         Log.d(TAG, "Fake emitting packet: $packet")
                         onDataReceived(packet.toByteArray())
                         delay(150.milliseconds) // Simulation delay between packets
