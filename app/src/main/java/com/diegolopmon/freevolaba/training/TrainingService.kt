@@ -11,6 +11,7 @@ import android.os.Build
 import android.os.IBinder
 import android.util.Log
 import androidx.core.app.NotificationCompat
+import com.diegolopmon.freevolaba.data.WorkoutRepository
 import com.diegolopmon.freevolaba.sensor.SensorData
 import com.diegolopmon.freevolaba.sensor.SensorDataDecoder
 import com.diegolopmon.freevolaba.sensor.SensorDataRecorder
@@ -22,6 +23,7 @@ import kotlinx.coroutines.SupervisorJob
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
+import kotlinx.coroutines.launch
 import kotlin.math.roundToInt
 
 class TrainingService : Service() {
@@ -37,10 +39,8 @@ class TrainingService : Service() {
         private const val NOTIFICATION_ID = 1
         private const val TAG = "TrainingService"
         private const val DEADBAND = 600
-        private const val VIRTUAL_GEAR_METERS_PER_REV =
-            3        // Chosen virtual gear, used for distance and speed
-        private const val ERGOMETER_FLYWHEEL_METERS_PER_REV =
-            6.0 // Monark convention, used only for the power formula
+        private const val VIRTUAL_GEAR_METERS_PER_REV = 3
+        private const val ERGOMETER_FLYWHEEL_METERS_PER_REV = 6.0
         private const val KP_PER_LEVEL = 0.3
         private const val KGF_M_MIN_TO_WATTS = 0.1635
 
@@ -70,8 +70,39 @@ class TrainingService : Service() {
         private val _isRunning = MutableStateFlow(false)
         val isRunningState: StateFlow<Boolean> = _isRunning.asStateFlow()
 
+        private val _lastSummaryState = MutableStateFlow<WorkoutSummary?>(null)
+        val lastSummaryState: StateFlow<WorkoutSummary?> = _lastSummaryState.asStateFlow()
+
         val chronometer = Chronometer(CoroutineScope(SupervisorJob() + Dispatchers.Default))
 
+        fun clearSummary() {
+            _lastSummaryState.value = null
+        }
+
+        fun stopAndSummarize(context: Context) {
+            val duration = chronometer.elapsedTimeSeconds.value
+            val history = historyState.value
+            val currentData = trainingDataState.value
+            val summary = WorkoutSummary.calculate(
+                historyPoints = history,
+                durationSeconds = duration,
+                finalTrainingData = currentData
+            )
+            _lastSummaryState.value = summary
+
+            val repository = WorkoutRepository(context.applicationContext)
+            CoroutineScope(Dispatchers.IO).launch {
+                try {
+                    repository.saveSession(summary)
+                    Log.d(TAG, "Successfully persisted workout summary: $summary")
+                } catch (e: Exception) {
+                    Log.e(TAG, "Error persisting workout summary", e)
+                }
+            }
+
+            val intent = Intent(context, TrainingService::class.java)
+            context.stopService(intent)
+        }
     }
 
     override fun onCreate() {
@@ -131,7 +162,7 @@ class TrainingService : Service() {
         return NotificationCompat.Builder(this, CHANNEL_ID)
             .setContentTitle("Entrenamiento en marcha")
             .setContentText("Grabando datos de la bici")
-            .setSmallIcon(ic_menu_mylocation) // Replace with your app icon
+            .setSmallIcon(ic_menu_mylocation)
             .setOngoing(true)
             .build()
     }
@@ -168,7 +199,6 @@ class TrainingService : Service() {
         val maxRaw = 1800
         val clampedRaw = rawResistance.coerceIn(minRaw, maxRaw)
 
-        // Inverted linear mapping using integer arithmetic: 1800 -> 1, 500 -> 10
         val numerator = maxRaw - clampedRaw
         val denominator = maxRaw - minRaw
         val mapped = 1 + (numerator * 9) / denominator

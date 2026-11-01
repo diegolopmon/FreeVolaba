@@ -2,21 +2,21 @@ package com.diegolopmon.freevolaba.training
 
 import java.util.Date
 class TrainingSessionHistory {
-    private val _points = mutableListOf<TrainingHistoryPoint>()
-    val points: List<TrainingHistoryPoint> get() = _points
+    val points: List<TrainingHistoryPoint>
+        field = mutableListOf<TrainingHistoryPoint>()
 
     var startTime: Date? = null
         private set
 
     fun startSession() {
-        _points.clear()
+        points.clear()
         startTime = Date()
     }
 
     fun addPoint(elapsedTimeSeconds: Long, trainingData: TrainingData, sampleIntervalSeconds: Long = 2L) {
-        val lastPoint = _points.lastOrNull()
+        val lastPoint = points.lastOrNull()
         if (lastPoint == null || elapsedTimeSeconds - lastPoint.elapsedTimeSeconds >= sampleIntervalSeconds) {
-            _points.add(
+            points.add(
                 TrainingHistoryPoint(
                     timestamp = Date(),
                     elapsedTimeSeconds = elapsedTimeSeconds,
@@ -27,7 +27,7 @@ class TrainingSessionHistory {
     }
 
     fun clear() {
-        _points.clear()
+        points.clear()
         startTime = null
     }
 }

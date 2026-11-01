@@ -4,6 +4,7 @@ import android.content.Intent
 import android.content.res.Configuration
 import android.os.Bundle
 import androidx.activity.ComponentActivity
+import androidx.activity.compose.BackHandler
 import androidx.activity.compose.setContent
 import androidx.activity.enableEdgeToEdge
 import androidx.compose.foundation.layout.Arrangement
@@ -21,13 +22,18 @@ import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.filled.History
+import androidx.compose.material.icons.filled.MoreVert
 import androidx.compose.material.icons.filled.Pause
 import androidx.compose.material.icons.filled.PlayArrow
 import androidx.compose.material.icons.filled.Stop
 import androidx.compose.material3.CircularProgressIndicator
+import androidx.compose.material3.DropdownMenu
+import androidx.compose.material3.DropdownMenuItem
 import androidx.compose.material3.ElevatedCard
 import androidx.compose.material3.FilledIconButton
 import androidx.compose.material3.Icon
+import androidx.compose.material3.IconButton
 import androidx.compose.material3.IconButtonDefaults
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Scaffold
@@ -36,8 +42,12 @@ import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.produceState
 import androidx.compose.runtime.remember
+import androidx.compose.runtime.rememberCoroutineScope
+import androidx.compose.runtime.saveable.rememberSaveable
+import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
@@ -48,21 +58,26 @@ import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.unit.dp
 import androidx.core.content.ContextCompat
+import com.diegolopmon.freevolaba.data.WorkoutRepository
 import com.diegolopmon.freevolaba.training.Chronometer
 import com.diegolopmon.freevolaba.training.TrainingData
 import com.diegolopmon.freevolaba.training.TrainingHistoryPoint
 import com.diegolopmon.freevolaba.training.TrainingService
+import com.diegolopmon.freevolaba.training.WorkoutSummary
 import com.diegolopmon.freevolaba.ui.TrainingChart
+import com.diegolopmon.freevolaba.ui.WorkoutHistoryScreen
+import com.diegolopmon.freevolaba.ui.WorkoutSummaryDialog
 import com.diegolopmon.freevolaba.ui.theme.FreeVolabaTheme
 import com.diegolopmon.freevolaba.ui.theme.ResistanceHighColor
 import com.diegolopmon.freevolaba.ui.theme.ResistanceLowColor
 import com.diegolopmon.freevolaba.ui.theme.ResistanceMediumColor
 import kotlinx.coroutines.delay
+import kotlinx.coroutines.launch
 import java.util.Date
-import java.util.Locale
+import kotlin.math.roundToInt
 import kotlin.time.Duration.Companion.milliseconds
 
-private const val TARGET_TRAINING_SECONDS = 600L // 10 minutos iniciales
+private const val TARGET_TRAINING_SECONDS = 600L
 
 class MainActivity : ComponentActivity() {
     override fun onCreate(savedInstanceState: Bundle?) {
@@ -84,9 +99,16 @@ class MainActivity : ComponentActivity() {
 fun TrackingControlScreen(modifier: Modifier = Modifier) {
     val context = LocalContext.current
 
+    val repository = remember(context) { WorkoutRepository(context) }
+    val savedSessions by repository.allSessions.collectAsState(initial = emptyList())
+
     val isRunning by TrainingService.isRunningState.collectAsState()
     val isPaused by TrainingService.chronometer.isPaused.collectAsState()
     val historyPoints by TrainingService.historyState.collectAsState()
+    val lastSummary by TrainingService.lastSummaryState.collectAsState()
+
+    var showHistoryScreen by rememberSaveable { mutableStateOf(false) }
+    var selectedHistoricalSummary by remember { mutableStateOf<WorkoutSummary?>(null) }
 
     val initialTracking = remember { TrainingService.trainingDataState.value }
     val trainingData by produceState(initialValue = initialTracking) {
@@ -96,30 +118,76 @@ fun TrackingControlScreen(modifier: Modifier = Modifier) {
         }
     }
     val elapsedTime by TrainingService.chronometer.elapsedTimeSeconds.collectAsState()
+    val scope = rememberCoroutineScope()
+    val closeHistory = { showHistoryScreen = false }
 
-    TrackingControlContent(
-        isRunning = isRunning,
-        isPaused = isPaused,
-        trainingData = trainingData,
-        elapsedTime = elapsedTime,
-        historyPoints = historyPoints,
-        onStart = {
-            val intent = Intent(context, TrainingService::class.java)
-            ContextCompat.startForegroundService(context, intent)
-        },
-        onPauseToggle = {
-            if (isPaused) {
-                TrainingService.resume(context)
-            } else {
-                TrainingService.pause(context)
+    if (showHistoryScreen) {
+        BackHandler {
+            showHistoryScreen = false
+        }
+        WorkoutHistoryScreen(
+            sessions = savedSessions,
+            onSessionClick = { entity ->
+                selectedHistoricalSummary = WorkoutSummary(
+                    timestamp = entity.timestamp,
+                    durationSeconds = entity.durationSeconds,
+                    totalDistance = entity.totalDistance,
+                    totalCalories = entity.totalCalories,
+                    avgPower = entity.avgPower,
+                    maxPower = entity.maxPower,
+                    avgRpm = entity.avgRpm,
+                    maxRpm = entity.maxRpm,
+                    avgResistance = entity.avgResistance,
+                    historyPoints = entity.historyPoints
+                )
+            },
+            onDeleteSession = { id ->
+                scope.launch { repository.deleteSessionById(id) }
+            },
+            onBackClick = closeHistory,
+            modifier = modifier
+        )
+    } else {
+        TrackingControlContent(
+            isRunning = isRunning,
+            isPaused = isPaused,
+            trainingData = trainingData,
+            elapsedTime = elapsedTime,
+            historyPoints = historyPoints,
+            onStart = {
+                val intent = Intent(context, TrainingService::class.java)
+                ContextCompat.startForegroundService(context, intent)
+            },
+            onPauseToggle = {
+                if (isPaused) {
+                    TrainingService.resume(context)
+                } else {
+                    TrainingService.pause(context)
+                }
+            },
+            onStop = {
+                TrainingService.stopAndSummarize(context)
+            },
+            onOpenHistory = {
+                showHistoryScreen = true
+            },
+            modifier = modifier
+        )
+    }
+
+    val summaryToDisplay = lastSummary ?: selectedHistoricalSummary
+    summaryToDisplay?.let { summary ->
+        WorkoutSummaryDialog(
+            summary = summary,
+            historyPoints = summary.historyPoints,
+            onDismiss = {
+                if (lastSummary != null) {
+                    TrainingService.clearSummary()
+                }
+                selectedHistoricalSummary = null
             }
-        },
-        onStop = {
-            val intent = Intent(context, TrainingService::class.java)
-            context.stopService(intent)
-        },
-        modifier = modifier
-    )
+        )
+    }
 }
 
 @Composable
@@ -132,89 +200,126 @@ fun TrackingControlContent(
     onStart: () -> Unit,
     onPauseToggle: () -> Unit,
     onStop: () -> Unit,
+    onOpenHistory: () -> Unit,
     modifier: Modifier = Modifier
 ) {
-    Column(
-        modifier = modifier
-            .fillMaxSize()
-            .padding(24.dp),
-        horizontalAlignment = Alignment.CenterHorizontally,
-        verticalArrangement = if (!isRunning) Arrangement.Center else Arrangement.Top
+    var menuExpanded by remember { mutableStateOf(false) }
+
+    Box(
+        modifier = modifier.fillMaxSize()
     ) {
-        if (isRunning) {
-            TimeProgressIndicator(
-                elapsedTime = elapsedTime,
-                targetSeconds = TARGET_TRAINING_SECONDS,
-                modifier = Modifier.padding(bottom = 8.dp)
-            )
-
-            TrainingChart(
-                historyPoints = historyPoints,
-                elapsedTime = elapsedTime,
-                modifier = Modifier
-                    .fillMaxWidth()
-                    .weight(1f)
-                    .padding(horizontal = 16.dp, vertical = 8.dp)
-            )
-        }
-
-        // Muestra las cards de métricas solo cuando el entrenamiento esté activo
-        if (isRunning) {
-            TopDashboard(trainingData = trainingData)
-            Spacer(modifier = Modifier.height(16.dp))
-        }
-
-        // HorizontalFloatingToolbar al fondo
-        HorizontalFloatingToolbar(
-            modifier = Modifier.padding(bottom = 16.dp)
+        // Top-right overflow menu
+        Box(
+            modifier = Modifier
+                .align(Alignment.TopEnd)
+                .padding(end = 8.dp)
         ) {
-            if (!isRunning) {
-                FilledIconButton(
-                    onClick = onStart,
-                    modifier = Modifier.size(64.dp),
-                    shape = CircleShape,
-                    colors = IconButtonDefaults.filledIconButtonColors(
-                        containerColor = MaterialTheme.colorScheme.primary,
-                        contentColor = MaterialTheme.colorScheme.onPrimary
-                    )
-                ) {
-                    Icon(
-                        imageVector = Icons.Default.PlayArrow,
-                        contentDescription = stringResource(R.string.desc_start_training),
-                        modifier = Modifier.size(36.dp)
-                    )
-                }
-            } else {
-                FilledIconButton(
-                    onClick = onPauseToggle,
-                    modifier = Modifier.size(56.dp),
-                    shape = CircleShape,
-                    colors = IconButtonDefaults.filledIconButtonColors(
-                        containerColor = MaterialTheme.colorScheme.primaryContainer,
-                        contentColor = MaterialTheme.colorScheme.onPrimaryContainer
-                    )
-                ) {
-                    Icon(
-                        imageVector = if (isPaused) Icons.Default.PlayArrow else Icons.Default.Pause,
-                        contentDescription = if (isPaused) stringResource(R.string.desc_resume_training) else stringResource(R.string.desc_pause_training),
-                        modifier = Modifier.size(32.dp)
-                    )
-                }
+            IconButton(onClick = { menuExpanded = true }) {
+                Icon(
+                    imageVector = Icons.Default.MoreVert,
+                    contentDescription = stringResource(R.string.desc_more_options)
+                )
+            }
+            DropdownMenu(
+                expanded = menuExpanded,
+                onDismissRequest = { menuExpanded = false }
+            ) {
+                DropdownMenuItem(
+                    text = { Text(stringResource(R.string.menu_history)) },
+                    leadingIcon = {
+                        Icon(
+                            imageVector = Icons.Default.History,
+                            contentDescription = null
+                        )
+                    },
+                    onClick = {
+                        menuExpanded = false
+                        onOpenHistory()
+                    }
+                )
+            }
+        }
 
-                FilledIconButton(
-                    onClick = onStop,
-                    modifier = Modifier.size(56.dp),
-                    shape = CircleShape,
-                    colors = IconButtonDefaults.filledIconButtonColors(
-                        containerColor = MaterialTheme.colorScheme.error,
-                        contentColor = MaterialTheme.colorScheme.onError
-                    )
-                ) {
-                    Icon(
-                        imageVector = Icons.Default.Stop,
-                        contentDescription = stringResource(R.string.desc_stop_training),
-                        modifier = Modifier.size(32.dp)
-                    )
+        Column(
+            modifier = Modifier
+                .fillMaxSize()
+                .padding(24.dp),
+            horizontalAlignment = Alignment.CenterHorizontally,
+            verticalArrangement = if (!isRunning) Arrangement.Center else Arrangement.Top
+        ) {
+            if (isRunning) {
+                TimeProgressIndicator(
+                    elapsedTime = elapsedTime,
+                    targetSeconds = TARGET_TRAINING_SECONDS,
+                    modifier = Modifier.padding(bottom = 8.dp)
+                )
+
+                TrainingChart(
+                    historyPoints = historyPoints,
+                    elapsedTime = elapsedTime,
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .weight(1f)
+                        .padding(horizontal = 16.dp, vertical = 8.dp)
+                )
+            }
+
+            if (isRunning) {
+                TopDashboard(trainingData = trainingData)
+                Spacer(modifier = Modifier.height(16.dp))
+            }
+
+            HorizontalFloatingToolbar(
+                modifier = Modifier.padding(bottom = 16.dp)
+            ) {
+                if (!isRunning) {
+                    FilledIconButton(
+                        onClick = onStart,
+                        modifier = Modifier.size(64.dp),
+                        shape = CircleShape,
+                        colors = IconButtonDefaults.filledIconButtonColors(
+                            containerColor = MaterialTheme.colorScheme.primary,
+                            contentColor = MaterialTheme.colorScheme.onPrimary
+                        )
+                    ) {
+                        Icon(
+                            imageVector = Icons.Default.PlayArrow,
+                            contentDescription = stringResource(R.string.desc_start_training),
+                            modifier = Modifier.size(36.dp)
+                        )
+                    }
+                } else {
+                    FilledIconButton(
+                        onClick = onPauseToggle,
+                        modifier = Modifier.size(56.dp),
+                        shape = CircleShape,
+                        colors = IconButtonDefaults.filledIconButtonColors(
+                            containerColor = MaterialTheme.colorScheme.primaryContainer,
+                            contentColor = MaterialTheme.colorScheme.onPrimaryContainer
+                        )
+                    ) {
+                        Icon(
+                            imageVector = if (isPaused) Icons.Default.PlayArrow else Icons.Default.Pause,
+                            contentDescription = if (isPaused) stringResource(R.string.desc_resume_training) else stringResource(R.string.desc_pause_training),
+                            modifier = Modifier.size(32.dp)
+                        )
+                    }
+
+                    FilledIconButton(
+                        onClick = onStop,
+                        modifier = Modifier.size(56.dp),
+                        shape = CircleShape,
+                        colors = IconButtonDefaults.filledIconButtonColors(
+                            containerColor = MaterialTheme.colorScheme.error,
+                            contentColor = MaterialTheme.colorScheme.onError
+                        )
+                    ) {
+                        Icon(
+                            imageVector = Icons.Default.Stop,
+                            contentDescription = stringResource(R.string.desc_stop_training),
+                            modifier = Modifier.size(32.dp)
+                        )
+                    }
                 }
             }
         }
@@ -344,7 +449,7 @@ fun TopDashboard(
         )
         MetricCard(
             label = stringResource(R.string.label_calories),
-            value = String.format(Locale.getDefault(), "%.1f", trainingData.calories),
+            value = trainingData.calories.roundToInt().toString(),
             unit = "kcal",
             modifier = Modifier
                 .weight(1f)
@@ -468,7 +573,8 @@ fun TrackingControlScreenRunningPreview() {
                 historyPoints = mockHistory,
                 onStart = {},
                 onPauseToggle = {},
-                onStop = {}
+                onStop = {},
+                onOpenHistory = {}
             )
         }
     }
@@ -495,7 +601,8 @@ fun TrackingControlScreenPreview() {
                 historyPoints = emptyList(),
                 onStart = {},
                 onPauseToggle = {},
-                onStop = {}
+                onStop = {},
+                onOpenHistory = {}
             )
         }
     }

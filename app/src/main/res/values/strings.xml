@@ -19,4 +19,23 @@
     <string name="chart_waiting_data">Waiting for training data…</string>
     <string name="notification_title">Workout in progress</string>
     <string name="notification_text">Recording bike telemetry</string>
+
+    <string name="summary_title">Workout Summary</string>
+    <string name="label_avg_power">AVG POWER</string>
+    <string name="label_max_power">MAX POWER</string>
+    <string name="label_avg_rpm">AVG RPM</string>
+    <string name="label_max_rpm">MAX RPM</string>
+    <string name="label_avg_resistance">AVG RESISTANCE</string>
+    <string name="btn_done">Done</string>
+
+    <string name="menu_history">Workout History</string>
+    <string name="title_history">Workout History</string>
+    <string name="empty_history">No completed workouts yet</string>
+    <string name="desc_more_options">More Options</string>
+    <string name="desc_back">Back</string>
+    <string name="desc_delete_session">Delete session</string>
+    <string name="delete_session_title">Delete workout?</string>
+    <string name="delete_session_message">This action cannot be undone.</string>
+    <string name="action_delete">Delete</string>
+    <string name="action_cancel">Cancel</string>
 </resources>
