@@ -16,7 +16,7 @@ class WorkoutRepository(context: Context) {
         return dao.insertSession(summary.toEntity())
     }
 
-    suspend fun getSessionById(id: Long): WorkoutSessionEntity? {
-        return dao.getSessionById(id)
+    suspend fun deleteSessionById(id: Long) {
+        dao.deleteSessionById(id)
     }
 }

@@ -69,11 +69,6 @@ fun WorkoutSummaryDialog(
                         fontWeight = FontWeight.Bold,
                         color = MaterialTheme.colorScheme.primary
                     )
-                    Text(
-                        text = stringResource(R.string.summary_saved),
-                        style = MaterialTheme.typography.bodySmall,
-                        color = MaterialTheme.colorScheme.onSurfaceVariant
-                    )
                 }
 
                 Spacer(modifier = Modifier.height(12.dp))

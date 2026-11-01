@@ -45,6 +45,7 @@ import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.produceState
 import androidx.compose.runtime.remember
+import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.runtime.saveable.rememberSaveable
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
@@ -71,11 +72,12 @@ import com.diegolopmon.freevolaba.ui.theme.ResistanceHighColor
 import com.diegolopmon.freevolaba.ui.theme.ResistanceLowColor
 import com.diegolopmon.freevolaba.ui.theme.ResistanceMediumColor
 import kotlinx.coroutines.delay
+import kotlinx.coroutines.launch
 import java.util.Date
 import kotlin.math.roundToInt
 import kotlin.time.Duration.Companion.milliseconds
 
-private const val TARGET_TRAINING_SECONDS = 600L // 10 minutos iniciales
+private const val TARGET_TRAINING_SECONDS = 600L
 
 class MainActivity : ComponentActivity() {
     override fun onCreate(savedInstanceState: Bundle?) {
@@ -116,6 +118,8 @@ fun TrackingControlScreen(modifier: Modifier = Modifier) {
         }
     }
     val elapsedTime by TrainingService.chronometer.elapsedTimeSeconds.collectAsState()
+    val scope = rememberCoroutineScope()
+    val closeHistory = { showHistoryScreen = false }
 
     if (showHistoryScreen) {
         BackHandler {
@@ -137,7 +141,10 @@ fun TrackingControlScreen(modifier: Modifier = Modifier) {
                     historyPoints = entity.historyPoints
                 )
             },
-            onBackClick = { showHistoryScreen = false },
+            onDeleteSession = { id ->
+                scope.launch { repository.deleteSessionById(id) }
+            },
+            onBackClick = closeHistory,
             modifier = modifier
         )
     } else {

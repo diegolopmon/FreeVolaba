@@ -21,7 +21,6 @@
     <string name="notification_text">Grabando datos de la bici</string>
 
     <string name="summary_title">Resumen de Entrenamiento</string>
-    <string name="summary_saved">Entrenamiento guardado en el historial</string>
     <string name="label_avg_power">POTENCIA MEDIA</string>
     <string name="label_max_power">POTENCIA MÁX.</string>
     <string name="label_avg_rpm">RPM MEDIA</string>
@@ -34,4 +33,9 @@
     <string name="empty_history">Aún no hay entrenamientos guardados</string>
     <string name="desc_more_options">Más opciones</string>
     <string name="desc_back">Volver</string>
+    <string name="desc_delete_session">Eliminar sesión</string>
+    <string name="delete_session_title">¿Eliminar entrenamiento?</string>
+    <string name="delete_session_message">Esta acción no se puede deshacer.</string>
+    <string name="action_delete">Eliminar</string>
+    <string name="action_cancel">Cancelar</string>
 </resources>

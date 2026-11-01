@@ -19,7 +19,9 @@ import androidx.compose.foundation.lazy.items
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.filled.ArrowBack
 import androidx.compose.material.icons.filled.ChevronRight
+import androidx.compose.material.icons.filled.Delete
 import androidx.compose.material.icons.filled.History
+import androidx.compose.material3.AlertDialog
 import androidx.compose.material3.ElevatedCard
 import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.Icon
@@ -27,8 +29,13 @@ import androidx.compose.material3.IconButton
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Scaffold
 import androidx.compose.material3.Text
+import androidx.compose.material3.TextButton
 import androidx.compose.material3.TopAppBar
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableStateOf
+import androidx.compose.runtime.remember
+import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.res.stringResource
@@ -49,6 +56,7 @@ fun WorkoutHistoryScreen(
     sessions: List<WorkoutSessionEntity>,
     onSessionClick: (WorkoutSessionEntity) -> Unit,
     onBackClick: () -> Unit,
+    onDeleteSession: (Long) -> Unit,
     modifier: Modifier = Modifier
 ) {
     Scaffold(
@@ -109,7 +117,8 @@ fun WorkoutHistoryScreen(
                 items(sessions, key = { it.id }) { session ->
                     WorkoutSessionCard(
                         session = session,
-                        onClick = { onSessionClick(session) }
+                        onClick = { onSessionClick(session) },
+                        onDelete = { onDeleteSession(session.id) }
                     )
                 }
             }
@@ -121,10 +130,12 @@ fun WorkoutHistoryScreen(
 fun WorkoutSessionCard(
     session: WorkoutSessionEntity,
     onClick: () -> Unit,
+    onDelete: () -> Unit,
     modifier: Modifier = Modifier
 ) {
     val dateFormat = SimpleDateFormat("dd MMM yyyy, HH:mm", Locale.getDefault())
     val dateString = dateFormat.format(Date(session.timestamp))
+    var showDeleteDialog by remember { mutableStateOf(false) }
 
     ElevatedCard(
         modifier = modifier
@@ -168,6 +179,14 @@ fun WorkoutSessionCard(
                 )
             }
 
+            IconButton(onClick = { showDeleteDialog = true }) {
+                Icon(
+                    imageVector = Icons.Default.Delete,
+                    contentDescription = stringResource(R.string.desc_delete_session),
+                    tint = MaterialTheme.colorScheme.onSurfaceVariant
+                )
+            }
+            Spacer(modifier = Modifier.width(16.dp))
             Icon(
                 imageVector = Icons.Default.ChevronRight,
                 contentDescription = null,
@@ -175,7 +194,31 @@ fun WorkoutSessionCard(
             )
         }
     }
+
+    if (showDeleteDialog) {
+        AlertDialog(
+            onDismissRequest = { showDeleteDialog = false },
+            title = { Text(stringResource(R.string.delete_session_title)) },
+            text = { Text(stringResource(R.string.delete_session_message)) },
+            confirmButton = {
+                TextButton(
+                    onClick = {
+                        showDeleteDialog = false
+                        onDelete()
+                    }
+                ) {
+                    Text(stringResource(R.string.action_delete))
+                }
+            },
+            dismissButton = {
+                TextButton(onClick = { showDeleteDialog = false }) {
+                    Text(stringResource(R.string.action_cancel))
+                }
+            }
+        )
+    }
 }
+
 
 @Composable
 private fun MetricBadge(
@@ -235,6 +278,7 @@ fun WorkoutHistoryScreenPreview() {
         WorkoutHistoryScreen(
             sessions = sampleSessions,
             onSessionClick = {},
+            onDeleteSession = {},
             onBackClick = {}
         )
     }

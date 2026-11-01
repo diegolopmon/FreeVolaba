@@ -21,7 +21,6 @@
     <string name="notification_text">Recording bike telemetry</string>
 
     <string name="summary_title">Workout Summary</string>
-    <string name="summary_saved">Workout saved to history</string>
     <string name="label_avg_power">AVG POWER</string>
     <string name="label_max_power">MAX POWER</string>
     <string name="label_avg_rpm">AVG RPM</string>
@@ -34,4 +33,9 @@
     <string name="empty_history">No completed workouts yet</string>
     <string name="desc_more_options">More Options</string>
     <string name="desc_back">Back</string>
+    <string name="desc_delete_session">Delete session</string>
+    <string name="delete_session_title">Delete workout?</string>
+    <string name="delete_session_message">This action cannot be undone.</string>
+    <string name="action_delete">Delete</string>
+    <string name="action_cancel">Cancel</string>
 </resources>
