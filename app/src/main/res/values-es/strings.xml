@@ -28,4 +28,10 @@
     <string name="label_max_rpm">RPM MÁX.</string>
     <string name="label_avg_resistance">RESISTENCIA MEDIA</string>
     <string name="btn_done">Aceptar</string>
+
+    <string name="menu_history">Historial de Entrenamientos</string>
+    <string name="title_history">Historial de Entrenamientos</string>
+    <string name="empty_history">Aún no hay entrenamientos guardados</string>
+    <string name="desc_more_options">Más opciones</string>
+    <string name="desc_back">Volver</string>
 </resources>
