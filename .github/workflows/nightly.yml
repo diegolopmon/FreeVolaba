@@ -1,0 +1,75 @@
+name: Nightly Build (Prod)
+
+on:
+  schedule:
+    - cron: '0 2 * * *'
+  push:
+    branches: [ "main" ]
+  workflow_dispatch:
+
+jobs:
+  test:
+    name: Run Unit Tests
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout Code
+        uses: actions/checkout@v4
+
+      - name: Set up JDK 21
+        uses: actions/setup-java@v4
+        with:
+          java-version: '21'
+          distribution: 'temurin'
+
+      - name: Setup Gradle
+        uses: gradle/actions/setup-gradle@v4
+
+      - name: Grant Execute Permission for Gradlew
+        run: chmod +x gradlew
+
+      - name: Run Unit Tests
+        run: ./gradlew test
+
+  build-nightly:
+    name: Build Nightly Release
+    needs: test
+    runs-on: ubuntu-latest
+    permissions:
+      contents: write
+    steps:
+      - name: Checkout Code
+        uses: actions/checkout@v4
+
+      - name: Set up JDK 21
+        uses: actions/setup-java@v4
+        with:
+          java-version: '21'
+          distribution: 'temurin'
+
+      - name: Setup Gradle
+        uses: gradle/actions/setup-gradle@v4
+
+      - name: Grant Execute Permission for Gradlew
+        run: chmod +x gradlew
+
+      - name: Build Prod Debug APK
+        run: ./gradlew assembleProdDebug
+
+      - name: Upload Nightly Artifact (Retention 7 days)
+        uses: actions/upload-artifact@v4
+        with:
+          name: freevolaba-prod-nightly
+          path: app/build/outputs/apk/prod/debug/
+          retention-days: 7
+
+      - name: Update Rolling Nightly Release
+        uses: softprops/action-gh-release@v2
+        with:
+          tag_name: "nightly"
+          name: "Nightly Build"
+          body: "Automated nightly build generated from branch `main` (${{ github.sha }})."
+          prerelease: true
+          make_latest: false
+          files: app/build/outputs/apk/prod/debug/*.apk
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
