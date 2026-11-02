@@ -137,3 +137,6 @@ When requested to define a new feature, Kanban card, or GitHub Issue:
    - Store UI strings in `res/values/strings.xml`, `res/values-es/strings.xml`, and `res/values-en/strings.xml`.
 4. **Thread Safety:**
    - Telemetry calculation callbacks from sensors may execute on background threads. Ensure thread-safety for mutable fields.
+5. **Language & Documentation Standard:**
+   - All source code, class names, method signatures, variable names, inline comments, KDoc documentation, workflow scripts (`.github/workflows/*.yml`), commit messages, and documentation files MUST be written in **English**.
+   - The only exception is user-facing localized string assets (e.g. `res/values-es/strings.xml`).

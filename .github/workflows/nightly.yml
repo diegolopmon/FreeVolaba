@@ -15,10 +15,10 @@ jobs:
       - name: Checkout Code
         uses: actions/checkout@v4
 
-      - name: Set up JDK 17
+      - name: Set up JDK 21
         uses: actions/setup-java@v4
         with:
-          java-version: '17'
+          java-version: '21'
           distribution: 'temurin'
 
       - name: Setup Gradle
@@ -40,10 +40,10 @@ jobs:
       - name: Checkout Code
         uses: actions/checkout@v4
 
-      - name: Set up JDK 17
+      - name: Set up JDK 21
         uses: actions/setup-java@v4
         with:
-          java-version: '17'
+          java-version: '21'
           distribution: 'temurin'
 
       - name: Setup Gradle
@@ -67,7 +67,7 @@ jobs:
         with:
           tag_name: "nightly"
           name: "Nightly Build"
-          body: "Build nocturno automático generado desde la rama `main` (${{ github.sha }})."
+          body: "Automated nightly build generated from branch `main` (${{ github.sha }})."
           prerelease: true
           make_latest: false
           files: app/build/outputs/apk/prod/debug/*.apk
