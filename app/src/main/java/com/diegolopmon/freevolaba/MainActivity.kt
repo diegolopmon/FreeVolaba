@@ -11,6 +11,7 @@ import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.IntrinsicSize
+import androidx.compose.foundation.layout.PaddingValues
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.RowScope
 import androidx.compose.foundation.layout.Spacer
@@ -20,20 +21,18 @@ import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
+import androidx.compose.foundation.lazy.LazyColumn
+import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.History
-import androidx.compose.material.icons.filled.MoreVert
 import androidx.compose.material.icons.filled.Pause
 import androidx.compose.material.icons.filled.PlayArrow
 import androidx.compose.material.icons.filled.Stop
 import androidx.compose.material3.CircularProgressIndicator
-import androidx.compose.material3.DropdownMenu
-import androidx.compose.material3.DropdownMenuItem
 import androidx.compose.material3.ElevatedCard
 import androidx.compose.material3.FilledIconButton
 import androidx.compose.material3.Icon
-import androidx.compose.material3.IconButton
 import androidx.compose.material3.IconButtonDefaults
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Scaffold
@@ -72,6 +71,7 @@ import com.diegolopmon.freevolaba.ui.UserDialog
 import com.diegolopmon.freevolaba.ui.UserProfileButton
 import com.diegolopmon.freevolaba.ui.UserSelectionScreen
 import com.diegolopmon.freevolaba.ui.WorkoutHistoryScreen
+import com.diegolopmon.freevolaba.ui.WorkoutSessionCard
 import com.diegolopmon.freevolaba.ui.WorkoutSummaryDialog
 import com.diegolopmon.freevolaba.ui.theme.FreeVolabaTheme
 import com.diegolopmon.freevolaba.ui.theme.ResistanceHighColor
@@ -196,6 +196,7 @@ fun TrackingControlScreen(modifier: Modifier = Modifier) {
     } else {
         TrackingControlContent(
             activeUser = currentUser,
+            savedSessions = savedSessions,
             isRunning = isRunning,
             isPaused = isPaused,
             trainingData = trainingData,
@@ -228,6 +229,23 @@ fun TrackingControlScreen(modifier: Modifier = Modifier) {
             },
             onOpenHistory = {
                 showHistoryScreen = true
+            },
+            onSessionClick = { entity ->
+                selectedHistoricalSummary = WorkoutSummary(
+                    timestamp = entity.timestamp,
+                    durationSeconds = entity.durationSeconds,
+                    totalDistance = entity.totalDistance,
+                    totalCalories = entity.totalCalories,
+                    avgPower = entity.avgPower,
+                    maxPower = entity.maxPower,
+                    avgRpm = entity.avgRpm,
+                    maxRpm = entity.maxRpm,
+                    avgResistance = entity.avgResistance,
+                    historyPoints = entity.historyPoints
+                )
+            },
+            onDeleteSession = { id ->
+                scope.launch { workoutRepository.deleteSessionById(id) }
             },
             modifier = modifier
         )
@@ -300,6 +318,7 @@ fun TrackingControlScreen(modifier: Modifier = Modifier) {
 @Composable
 fun TrackingControlContent(
     activeUser: UserEntity,
+    savedSessions: List<WorkoutSessionEntity>,
     isRunning: Boolean,
     isPaused: Boolean,
     trainingData: TrainingData,
@@ -312,20 +331,18 @@ fun TrackingControlContent(
     onEditProfile: () -> Unit,
     onCreateNewUser: () -> Unit,
     onOpenHistory: () -> Unit,
+    onSessionClick: (WorkoutSessionEntity) -> Unit,
+    onDeleteSession: (Long) -> Unit,
     modifier: Modifier = Modifier
 ) {
-    var overflowMenuExpanded by remember { mutableStateOf(false) }
-
     Box(
         modifier = modifier.fillMaxSize()
     ) {
-        // Top-right header controls: User profile button AND separate 3-dots overflow menu
-        Row(
+        // Top-right header controls: User profile button ONLY
+        Box(
             modifier = Modifier
                 .align(Alignment.TopEnd)
-                .padding(top = 8.dp, end = 8.dp),
-            verticalAlignment = Alignment.CenterVertically,
-            horizontalArrangement = Arrangement.spacedBy(4.dp)
+                .padding(top = 8.dp, end = 12.dp)
         ) {
             UserProfileButton(
                 activeUser = activeUser,
@@ -333,33 +350,6 @@ fun TrackingControlContent(
                 onEditProfile = onEditProfile,
                 onCreateNewUser = onCreateNewUser
             )
-
-            Box {
-                IconButton(onClick = { overflowMenuExpanded = true }) {
-                    Icon(
-                        imageVector = Icons.Default.MoreVert,
-                        contentDescription = stringResource(R.string.desc_more_options)
-                    )
-                }
-                DropdownMenu(
-                    expanded = overflowMenuExpanded,
-                    onDismissRequest = { overflowMenuExpanded = false }
-                ) {
-                    DropdownMenuItem(
-                        text = { Text(stringResource(R.string.menu_history)) },
-                        leadingIcon = {
-                            Icon(
-                                imageVector = Icons.Default.History,
-                                contentDescription = null
-                            )
-                        },
-                        onClick = {
-                            overflowMenuExpanded = false
-                            onOpenHistory()
-                        }
-                    )
-                }
-            }
         }
 
         Column(
@@ -367,7 +357,7 @@ fun TrackingControlContent(
                 .fillMaxSize()
                 .padding(24.dp),
             horizontalAlignment = Alignment.CenterHorizontally,
-            verticalArrangement = if (!isRunning) Arrangement.Center else Arrangement.Top
+            verticalArrangement = Arrangement.Top
         ) {
             if (isRunning) {
                 TimeProgressIndicator(
@@ -384,11 +374,63 @@ fun TrackingControlContent(
                         .weight(1f)
                         .padding(horizontal = 16.dp, vertical = 8.dp)
                 )
-            }
 
-            if (isRunning) {
                 TopDashboard(trainingData = trainingData)
                 Spacer(modifier = Modifier.height(16.dp))
+            } else {
+                // When NO workout is running: Display Workout History list directly
+                Text(
+                    text = stringResource(R.string.title_history),
+                    style = MaterialTheme.typography.titleLarge,
+                    fontWeight = FontWeight.Bold,
+                    color = MaterialTheme.colorScheme.primary,
+                    modifier = Modifier
+                        .align(Alignment.Start)
+                        .padding(bottom = 12.dp, top = 8.dp)
+                )
+
+                if (savedSessions.isEmpty()) {
+                    Box(
+                        modifier = Modifier
+                            .fillMaxWidth()
+                            .weight(1f),
+                        contentAlignment = Alignment.Center
+                    ) {
+                        Column(
+                            horizontalAlignment = Alignment.CenterHorizontally,
+                            verticalArrangement = Arrangement.Center
+                        ) {
+                            Icon(
+                                imageVector = Icons.Default.History,
+                                contentDescription = null,
+                                modifier = Modifier.size(64.dp),
+                                tint = MaterialTheme.colorScheme.outline
+                            )
+                            Spacer(modifier = Modifier.height(12.dp))
+                            Text(
+                                text = stringResource(R.string.empty_history),
+                                style = MaterialTheme.typography.bodyLarge,
+                                color = MaterialTheme.colorScheme.onSurfaceVariant
+                            )
+                        }
+                    }
+                } else {
+                    LazyColumn(
+                        modifier = Modifier
+                            .fillMaxWidth()
+                            .weight(1f),
+                        contentPadding = PaddingValues(bottom = 16.dp),
+                        verticalArrangement = Arrangement.spacedBy(12.dp)
+                    ) {
+                        items(savedSessions, key = { it.id }) { session ->
+                            WorkoutSessionCard(
+                                session = session,
+                                onClick = { onSessionClick(session) },
+                                onDelete = { onDeleteSession(session.id) }
+                            )
+                        }
+                    }
+                }
             }
 
             HorizontalFloatingToolbar(
@@ -397,7 +439,7 @@ fun TrackingControlContent(
                 if (!isRunning) {
                     FilledIconButton(
                         onClick = onStart,
-                        modifier = Modifier.size(64.dp),
+                        modifier = Modifier.size(56.dp),
                         shape = CircleShape,
                         colors = IconButtonDefaults.filledIconButtonColors(
                             containerColor = MaterialTheme.colorScheme.primary,
@@ -407,7 +449,7 @@ fun TrackingControlContent(
                         Icon(
                             imageVector = Icons.Default.PlayArrow,
                             contentDescription = stringResource(R.string.desc_start_training),
-                            modifier = Modifier.size(36.dp)
+                            modifier = Modifier.size(32.dp)
                         )
                     }
                 } else {
@@ -439,6 +481,22 @@ fun TrackingControlContent(
                         Icon(
                             imageVector = Icons.Default.Stop,
                             contentDescription = stringResource(R.string.desc_stop_training),
+                            modifier = Modifier.size(32.dp)
+                        )
+                    }
+
+                    FilledIconButton(
+                        onClick = onOpenHistory,
+                        modifier = Modifier.size(56.dp),
+                        shape = CircleShape,
+                        colors = IconButtonDefaults.filledIconButtonColors(
+                            containerColor = MaterialTheme.colorScheme.surfaceContainerHighest,
+                            contentColor = MaterialTheme.colorScheme.onSurfaceVariant
+                        )
+                    ) {
+                        Icon(
+                            imageVector = Icons.Default.History,
+                            contentDescription = stringResource(R.string.title_history),
                             modifier = Modifier.size(32.dp)
                         )
                     }
@@ -684,6 +742,7 @@ fun TrackingControlScreenRunningPreview() {
         ) {
             TrackingControlContent(
                 activeUser = sampleUser,
+                savedSessions = emptyList(),
                 isRunning = true,
                 isPaused = false,
                 trainingData = TrainingData(
@@ -701,14 +760,16 @@ fun TrackingControlScreenRunningPreview() {
                 onSwitchUser = {},
                 onEditProfile = {},
                 onCreateNewUser = {},
-                onOpenHistory = {}
+                onOpenHistory = {},
+                onSessionClick = {},
+                onDeleteSession = {}
             )
         }
     }
 }
 
 @Preview(
-    name = "Entrenamiento Detenido",
+    name = "Entrenamiento Detenido con Histórico",
     device = "spec:width=1280dp,height=800dp,dpi=240,orientation=landscape",
     showBackground = true,
     uiMode = Configuration.UI_MODE_NIGHT_YES
@@ -716,6 +777,21 @@ fun TrackingControlScreenRunningPreview() {
 @Composable
 fun TrackingControlScreenPreview() {
     val sampleUser = UserEntity(id = 1, name = "Alex", avatarId = "face_teal")
+    val sampleSessions = listOf(
+        WorkoutSessionEntity(
+            id = 1,
+            userId = 1,
+            timestamp = System.currentTimeMillis() - 86400000L,
+            durationSeconds = 625L,
+            totalDistance = 2400,
+            totalCalories = 146,
+            avgPower = 165,
+            maxPower = 280,
+            avgRpm = 82,
+            maxRpm = 115,
+            avgResistance = 4.5
+        )
+    )
     FreeVolabaTheme {
         Surface(
             modifier = Modifier.fillMaxSize(),
@@ -723,6 +799,7 @@ fun TrackingControlScreenPreview() {
         ) {
             TrackingControlContent(
                 activeUser = sampleUser,
+                savedSessions = sampleSessions,
                 isRunning = false,
                 isPaused = false,
                 trainingData = TrainingData(),
@@ -734,7 +811,9 @@ fun TrackingControlScreenPreview() {
                 onSwitchUser = {},
                 onEditProfile = {},
                 onCreateNewUser = {},
-                onOpenHistory = {}
+                onOpenHistory = {},
+                onSessionClick = {},
+                onDeleteSession = {}
             )
         }
     }
