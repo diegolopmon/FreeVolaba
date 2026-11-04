@@ -38,4 +38,38 @@
     <string name="delete_session_message">Esta acción no se puede deshacer.</string>
     <string name="action_delete">Eliminar</string>
     <string name="action_cancel">Cancelar</string>
+
+    <string name="title_select_user">Seleccionar Usuario</string>
+    <string name="title_create_user">Nuevo Usuario</string>
+    <string name="title_edit_user">Editar Usuario</string>
+    <string name="action_create_user">Añadir Usuario</string>
+    <string name="action_switch_user">Cambiar de Usuario</string>
+    <string name="action_manage_users">Gestionar Usuarios</string>
+    <string name="label_user_name">Nombre del usuario</string>
+    <string name="label_choose_avatar">Elegir avatar</string>
+    <string name="msg_no_users">Aún no hay usuarios creados. ¡Añade uno para empezar!</string>
+    <string name="action_save">Guardar</string>
+    <string name="action_delete_user">Eliminar Usuario</string>
+    <string name="delete_user_title">¿Eliminar Usuario?</string>
+    <string name="delete_user_message">Esto eliminará permanentemente al usuario y todos sus entrenamientos.</string>
+    <string name="desc_user_profile">Perfil de usuario</string>
+
+    <string name="label_birth_date">Fecha de nacimiento (Opcional)</string>
+    <string name="label_height_cm">Altura en cm (Opcional)</string>
+    <string name="label_weight_kg">Peso en kg (Opcional)</string>
+    <string name="action_new_user">Nuevo usuario</string>
+    <string name="action_take_photo">Tomar Selfie</string>
+    <string name="action_remove_photo">Quitar Selfie</string>
+
+    <string name="title_crop_image">Ajustar Recorte</string>
+    <string name="action_rotate">Girar 90°</string>
+    <string name="action_crop">Aplicar Recorte</string>
+    <string name="action_edit_crop">Ajustar Recorte</string>
+
+    <string name="label_weeks">Semanas</string>
+    <string name="label_months">Meses</string>
+    <string name="label_calories_short">Calorías</string>
+    <string name="label_time_short">Tiempo</string>
+    <string name="chart_summary_title">Resumen de Ejercicios</string>
+    <string name="no_chart_data">Sin datos para el periodo</string>
 </resources>

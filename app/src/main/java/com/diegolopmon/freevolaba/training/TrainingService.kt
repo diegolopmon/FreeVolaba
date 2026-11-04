@@ -79,7 +79,7 @@ class TrainingService : Service() {
             _lastSummaryState.value = null
         }
 
-        fun stopAndSummarize(context: Context) {
+        fun stopAndSummarize(context: Context, userId: Long) {
             val duration = chronometer.elapsedTimeSeconds.value
             val history = historyState.value
             val currentData = trainingDataState.value
@@ -93,8 +93,8 @@ class TrainingService : Service() {
             val repository = WorkoutRepository(context.applicationContext)
             CoroutineScope(Dispatchers.IO).launch {
                 try {
-                    repository.saveSession(summary)
-                    Log.d(TAG, "Successfully persisted workout summary: $summary")
+                    repository.saveSession(summary, userId)
+                    Log.d(TAG, "Successfully persisted workout summary for userId $userId: $summary")
                 } catch (e: Exception) {
                     Log.e(TAG, "Error persisting workout summary", e)
                 }

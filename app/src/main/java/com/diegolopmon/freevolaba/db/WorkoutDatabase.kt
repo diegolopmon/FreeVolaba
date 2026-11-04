@@ -6,11 +6,12 @@ import androidx.room.Room
 import androidx.room.RoomDatabase
 import androidx.room.TypeConverters
 
-@Database(entities = [WorkoutSessionEntity::class], version = 1, exportSchema = false)
+@Database(entities = [WorkoutSessionEntity::class, UserEntity::class], version = 3, exportSchema = false)
 @TypeConverters(WorkoutConverters::class)
 abstract class WorkoutDatabase : RoomDatabase() {
 
     abstract fun workoutSessionDao(): WorkoutSessionDao
+    abstract fun userDao(): UserDao
 
     companion object {
         @Volatile

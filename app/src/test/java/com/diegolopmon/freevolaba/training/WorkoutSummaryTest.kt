@@ -87,8 +87,9 @@ class WorkoutSummaryTest {
             avgResistance = 4.5
         )
 
-        val entity = summary.toEntity()
+        val entity = summary.toEntity(1L)
 
+        assertEquals(1L, entity.userId)
         assertEquals(1600000000000L, entity.timestamp)
         assertEquals(600L, entity.durationSeconds)
         assertEquals(3000, entity.totalDistance)
