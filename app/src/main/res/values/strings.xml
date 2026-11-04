@@ -38,4 +38,31 @@
     <string name="delete_session_message">This action cannot be undone.</string>
     <string name="action_delete">Delete</string>
     <string name="action_cancel">Cancel</string>
+
+    <string name="title_select_user">Select User</string>
+    <string name="title_create_user">New User</string>
+    <string name="title_edit_user">Edit User</string>
+    <string name="action_create_user">Add User</string>
+    <string name="action_switch_user">Switch User</string>
+    <string name="action_manage_users">Manage Users</string>
+    <string name="label_user_name">User Name</string>
+    <string name="label_choose_avatar">Choose Avatar</string>
+    <string name="msg_no_users">No users created yet. Add one to get started!</string>
+    <string name="action_save">Save</string>
+    <string name="action_delete_user">Delete User</string>
+    <string name="delete_user_title">Delete User?</string>
+    <string name="delete_user_message">This will permanently delete the user and all their workouts.</string>
+    <string name="desc_user_profile">User profile</string>
+
+    <string name="label_birth_date">Date of Birth (Optional)</string>
+    <string name="label_height_cm">Height in cm (Optional)</string>
+    <string name="label_weight_kg">Weight in kg (Optional)</string>
+    <string name="action_new_user">New User</string>
+    <string name="action_take_photo">Take Selfie</string>
+    <string name="action_remove_photo">Remove Selfie</string>
+
+    <string name="title_crop_image">Crop Photo</string>
+    <string name="action_rotate">Rotate 90°</string>
+    <string name="action_crop">Apply Crop</string>
+    <string name="action_edit_crop">Edit Crop</string>
 </resources>

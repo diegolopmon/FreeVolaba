@@ -15,8 +15,9 @@ data class WorkoutSummary(
     val avgResistance: Double = 1.0,
     val historyPoints: List<TrainingHistoryPoint> = emptyList()
 ) {
-    fun toEntity(): WorkoutSessionEntity {
+    fun toEntity(userId: Long): WorkoutSessionEntity {
         return WorkoutSessionEntity(
+            userId = userId,
             timestamp = timestamp,
             durationSeconds = durationSeconds,
             totalDistance = totalDistance,

@@ -58,13 +58,19 @@ import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.unit.dp
 import androidx.core.content.ContextCompat
+import com.diegolopmon.freevolaba.data.UserRepository
 import com.diegolopmon.freevolaba.data.WorkoutRepository
+import com.diegolopmon.freevolaba.db.UserEntity
+import com.diegolopmon.freevolaba.db.WorkoutSessionEntity
 import com.diegolopmon.freevolaba.training.Chronometer
 import com.diegolopmon.freevolaba.training.TrainingData
 import com.diegolopmon.freevolaba.training.TrainingHistoryPoint
 import com.diegolopmon.freevolaba.training.TrainingService
 import com.diegolopmon.freevolaba.training.WorkoutSummary
 import com.diegolopmon.freevolaba.ui.TrainingChart
+import com.diegolopmon.freevolaba.ui.UserDialog
+import com.diegolopmon.freevolaba.ui.UserProfileButton
+import com.diegolopmon.freevolaba.ui.UserSelectionScreen
 import com.diegolopmon.freevolaba.ui.WorkoutHistoryScreen
 import com.diegolopmon.freevolaba.ui.WorkoutSummaryDialog
 import com.diegolopmon.freevolaba.ui.theme.FreeVolabaTheme
@@ -72,6 +78,7 @@ import com.diegolopmon.freevolaba.ui.theme.ResistanceHighColor
 import com.diegolopmon.freevolaba.ui.theme.ResistanceLowColor
 import com.diegolopmon.freevolaba.ui.theme.ResistanceMediumColor
 import kotlinx.coroutines.delay
+import kotlinx.coroutines.flow.collectLatest
 import kotlinx.coroutines.launch
 import java.util.Date
 import kotlin.math.roundToInt
@@ -99,15 +106,32 @@ class MainActivity : ComponentActivity() {
 fun TrackingControlScreen(modifier: Modifier = Modifier) {
     val context = LocalContext.current
 
-    val repository = remember(context) { WorkoutRepository(context) }
-    val savedSessions by repository.allSessions.collectAsState(initial = emptyList())
+    val userRepository = remember(context) { UserRepository(context) }
+    val workoutRepository = remember(context) { WorkoutRepository(context) }
+
+    val users by userRepository.allUsers.collectAsState(initial = emptyList())
+    val activeUser by userRepository.activeUser.collectAsState(initial = null)
+
+    val currentUserId = activeUser?.id
+    val savedSessions by produceState(initialValue = emptyList(), currentUserId) {
+        if (currentUserId != null) {
+            workoutRepository.getSessionsForUser(currentUserId).collectLatest { sessions ->
+                value = sessions
+            }
+        } else {
+            value = emptyList()
+        }
+    }
 
     val isRunning by TrainingService.isRunningState.collectAsState()
     val isPaused by TrainingService.chronometer.isPaused.collectAsState()
     val historyPoints by TrainingService.historyState.collectAsState()
     val lastSummary by TrainingService.lastSummaryState.collectAsState()
 
+    var showUserSelectionScreen by rememberSaveable { mutableStateOf(true) }
     var showHistoryScreen by rememberSaveable { mutableStateOf(false) }
+    var userToEditDialog by remember { mutableStateOf<UserEntity?>(null) }
+    var showUserEditDialog by remember { mutableStateOf(false) }
     var selectedHistoricalSummary by remember { mutableStateOf<WorkoutSummary?>(null) }
 
     val initialTracking = remember { TrainingService.trainingDataState.value }
@@ -121,7 +145,29 @@ fun TrackingControlScreen(modifier: Modifier = Modifier) {
     val scope = rememberCoroutineScope()
     val closeHistory = { showHistoryScreen = false }
 
-    if (showHistoryScreen) {
+    val currentUser = activeUser
+
+    if (currentUser == null || showUserSelectionScreen) {
+        if (currentUser != null) {
+            BackHandler {
+                showUserSelectionScreen = false
+            }
+        }
+        UserSelectionScreen(
+            users = users,
+            onSelectUser = { selectedUser ->
+                userRepository.selectUser(selectedUser.id)
+                showUserSelectionScreen = false
+            },
+            onCreateUser = { name, avatarId, avatarPath, originalAvatarPath, birthDate, heightCm, weightKg ->
+                scope.launch {
+                    userRepository.createUser(name, avatarId, avatarPath, originalAvatarPath, birthDate, heightCm, weightKg)
+                    showUserSelectionScreen = false
+                }
+            },
+            modifier = modifier
+        )
+    } else if (showHistoryScreen) {
         BackHandler {
             showHistoryScreen = false
         }
@@ -142,13 +188,14 @@ fun TrackingControlScreen(modifier: Modifier = Modifier) {
                 )
             },
             onDeleteSession = { id ->
-                scope.launch { repository.deleteSessionById(id) }
+                scope.launch { workoutRepository.deleteSessionById(id) }
             },
             onBackClick = closeHistory,
             modifier = modifier
         )
     } else {
         TrackingControlContent(
+            activeUser = currentUser,
             isRunning = isRunning,
             isPaused = isPaused,
             trainingData = trainingData,
@@ -166,12 +213,72 @@ fun TrackingControlScreen(modifier: Modifier = Modifier) {
                 }
             },
             onStop = {
-                TrainingService.stopAndSummarize(context)
+                TrainingService.stopAndSummarize(context, currentUser.id)
+            },
+            onSwitchUser = {
+                showUserSelectionScreen = true
+            },
+            onEditProfile = {
+                userToEditDialog = currentUser
+                showUserEditDialog = true
+            },
+            onCreateNewUser = {
+                userToEditDialog = null
+                showUserEditDialog = true
             },
             onOpenHistory = {
                 showHistoryScreen = true
             },
             modifier = modifier
+        )
+    }
+
+    if (showUserEditDialog) {
+        UserDialog(
+            userToEdit = userToEditDialog,
+            onDismiss = {
+                showUserEditDialog = false
+                userToEditDialog = null
+            },
+            onSave = { newName, newAvatarId, avatarPath, originalAvatarPath, birthDate, heightCm, weightKg ->
+                val current = userToEditDialog
+                if (current != null) {
+                    scope.launch {
+                        userRepository.updateUser(
+                            current.copy(
+                                name = newName,
+                                avatarId = newAvatarId,
+                                avatarPath = avatarPath,
+                                originalAvatarPath = originalAvatarPath,
+                                birthDate = birthDate,
+                                heightCm = heightCm,
+                                weightKg = weightKg
+                            )
+                        )
+                    }
+                } else {
+                    scope.launch {
+                        userRepository.createUser(
+                            name = newName,
+                            avatarId = newAvatarId,
+                            avatarPath = avatarPath,
+                            originalAvatarPath = originalAvatarPath,
+                            birthDate = birthDate,
+                            heightCm = heightCm,
+                            weightKg = weightKg
+                        )
+                    }
+                }
+                showUserEditDialog = false
+                userToEditDialog = null
+            },
+            onDelete = { userToDelete ->
+                scope.launch {
+                    userRepository.deleteUser(userToDelete.id)
+                }
+                showUserEditDialog = false
+                userToEditDialog = null
+            }
         )
     }
 
@@ -192,6 +299,7 @@ fun TrackingControlScreen(modifier: Modifier = Modifier) {
 
 @Composable
 fun TrackingControlContent(
+    activeUser: UserEntity,
     isRunning: Boolean,
     isPaused: Boolean,
     trainingData: TrainingData,
@@ -200,43 +308,57 @@ fun TrackingControlContent(
     onStart: () -> Unit,
     onPauseToggle: () -> Unit,
     onStop: () -> Unit,
+    onSwitchUser: () -> Unit,
+    onEditProfile: () -> Unit,
+    onCreateNewUser: () -> Unit,
     onOpenHistory: () -> Unit,
     modifier: Modifier = Modifier
 ) {
-    var menuExpanded by remember { mutableStateOf(false) }
+    var overflowMenuExpanded by remember { mutableStateOf(false) }
 
     Box(
         modifier = modifier.fillMaxSize()
     ) {
-        // Top-right overflow menu
-        Box(
+        // Top-right header controls: User profile button AND separate 3-dots overflow menu
+        Row(
             modifier = Modifier
                 .align(Alignment.TopEnd)
-                .padding(end = 8.dp)
+                .padding(top = 8.dp, end = 8.dp),
+            verticalAlignment = Alignment.CenterVertically,
+            horizontalArrangement = Arrangement.spacedBy(4.dp)
         ) {
-            IconButton(onClick = { menuExpanded = true }) {
-                Icon(
-                    imageVector = Icons.Default.MoreVert,
-                    contentDescription = stringResource(R.string.desc_more_options)
-                )
-            }
-            DropdownMenu(
-                expanded = menuExpanded,
-                onDismissRequest = { menuExpanded = false }
-            ) {
-                DropdownMenuItem(
-                    text = { Text(stringResource(R.string.menu_history)) },
-                    leadingIcon = {
-                        Icon(
-                            imageVector = Icons.Default.History,
-                            contentDescription = null
-                        )
-                    },
-                    onClick = {
-                        menuExpanded = false
-                        onOpenHistory()
-                    }
-                )
+            UserProfileButton(
+                activeUser = activeUser,
+                onSwitchUser = onSwitchUser,
+                onEditProfile = onEditProfile,
+                onCreateNewUser = onCreateNewUser
+            )
+
+            Box {
+                IconButton(onClick = { overflowMenuExpanded = true }) {
+                    Icon(
+                        imageVector = Icons.Default.MoreVert,
+                        contentDescription = stringResource(R.string.desc_more_options)
+                    )
+                }
+                DropdownMenu(
+                    expanded = overflowMenuExpanded,
+                    onDismissRequest = { overflowMenuExpanded = false }
+                ) {
+                    DropdownMenuItem(
+                        text = { Text(stringResource(R.string.menu_history)) },
+                        leadingIcon = {
+                            Icon(
+                                imageVector = Icons.Default.History,
+                                contentDescription = null
+                            )
+                        },
+                        onClick = {
+                            overflowMenuExpanded = false
+                            onOpenHistory()
+                        }
+                    )
+                }
             }
         }
 
@@ -554,12 +676,14 @@ fun TrackingControlScreenRunningPreview() {
             ))
         )
     }
+    val sampleUser = UserEntity(id = 1, name = "Alex", avatarId = "face_teal")
     FreeVolabaTheme {
         Surface(
             modifier = Modifier.fillMaxSize(),
             color = MaterialTheme.colorScheme.background
         ) {
             TrackingControlContent(
+                activeUser = sampleUser,
                 isRunning = true,
                 isPaused = false,
                 trainingData = TrainingData(
@@ -574,6 +698,9 @@ fun TrackingControlScreenRunningPreview() {
                 onStart = {},
                 onPauseToggle = {},
                 onStop = {},
+                onSwitchUser = {},
+                onEditProfile = {},
+                onCreateNewUser = {},
                 onOpenHistory = {}
             )
         }
@@ -588,12 +715,14 @@ fun TrackingControlScreenRunningPreview() {
 )
 @Composable
 fun TrackingControlScreenPreview() {
+    val sampleUser = UserEntity(id = 1, name = "Alex", avatarId = "face_teal")
     FreeVolabaTheme {
         Surface(
             modifier = Modifier.fillMaxSize(),
             color = MaterialTheme.colorScheme.background
         ) {
             TrackingControlContent(
+                activeUser = sampleUser,
                 isRunning = false,
                 isPaused = false,
                 trainingData = TrainingData(),
@@ -602,6 +731,9 @@ fun TrackingControlScreenPreview() {
                 onStart = {},
                 onPauseToggle = {},
                 onStop = {},
+                onSwitchUser = {},
+                onEditProfile = {},
+                onCreateNewUser = {},
                 onOpenHistory = {}
             )
         }

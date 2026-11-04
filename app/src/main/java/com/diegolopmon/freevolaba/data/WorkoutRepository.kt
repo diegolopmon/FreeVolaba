@@ -12,8 +12,12 @@ class WorkoutRepository(context: Context) {
 
     val allSessions: Flow<List<WorkoutSessionEntity>> = dao.getAllSessions()
 
-    suspend fun saveSession(summary: WorkoutSummary): Long {
-        return dao.insertSession(summary.toEntity())
+    fun getSessionsForUser(userId: Long): Flow<List<WorkoutSessionEntity>> {
+        return dao.getSessionsForUser(userId)
+    }
+
+    suspend fun saveSession(summary: WorkoutSummary, userId: Long): Long {
+        return dao.insertSession(summary.toEntity(userId))
     }
 
     suspend fun deleteSessionById(id: Long) {

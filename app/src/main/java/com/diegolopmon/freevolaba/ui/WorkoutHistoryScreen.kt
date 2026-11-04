@@ -251,6 +251,7 @@ fun WorkoutHistoryScreenPreview() {
     val sampleSessions = listOf(
         WorkoutSessionEntity(
             id = 1,
+            userId = 1,
             timestamp = System.currentTimeMillis() - 86400000L,
             durationSeconds = 625L,
             totalDistance = 2400,
@@ -263,6 +264,7 @@ fun WorkoutHistoryScreenPreview() {
         ),
         WorkoutSessionEntity(
             id = 2,
+            userId = 1,
             timestamp = System.currentTimeMillis() - 172800000L,
             durationSeconds = 1200L,
             totalDistance = 5100,
