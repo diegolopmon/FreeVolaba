@@ -13,7 +13,6 @@ import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.IntrinsicSize
 import androidx.compose.foundation.layout.PaddingValues
 import androidx.compose.foundation.layout.Row
-import androidx.compose.foundation.layout.RowScope
 import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxHeight
 import androidx.compose.foundation.layout.fillMaxSize
@@ -70,6 +69,7 @@ import com.diegolopmon.freevolaba.ui.TrainingChart
 import com.diegolopmon.freevolaba.ui.UserDialog
 import com.diegolopmon.freevolaba.ui.UserProfileButton
 import com.diegolopmon.freevolaba.ui.UserSelectionScreen
+import com.diegolopmon.freevolaba.ui.WorkoutHistoryBarChart
 import com.diegolopmon.freevolaba.ui.WorkoutHistoryScreen
 import com.diegolopmon.freevolaba.ui.WorkoutSessionCard
 import com.diegolopmon.freevolaba.ui.WorkoutSummaryDialog
@@ -378,7 +378,7 @@ fun TrackingControlContent(
                 TopDashboard(trainingData = trainingData)
                 Spacer(modifier = Modifier.height(16.dp))
             } else {
-                // When NO workout is running: Display Workout History list directly
+                // When NO workout is running: Display 2-Column Workout History + Summary Bar Chart directly
                 Text(
                     text = stringResource(R.string.title_history),
                     style = MaterialTheme.typography.titleLarge,
@@ -415,90 +415,132 @@ fun TrackingControlContent(
                         }
                     }
                 } else {
-                    LazyColumn(
+                    Row(
                         modifier = Modifier
                             .fillMaxWidth()
                             .weight(1f),
-                        contentPadding = PaddingValues(bottom = 16.dp),
-                        verticalArrangement = Arrangement.spacedBy(12.dp)
+                        horizontalArrangement = Arrangement.spacedBy(16.dp)
                     ) {
-                        items(savedSessions, key = { it.id }) { session ->
-                            WorkoutSessionCard(
-                                session = session,
-                                onClick = { onSessionClick(session) },
-                                onDelete = { onDeleteSession(session.id) }
-                            )
+                        // Left Column: List of exercises
+                        LazyColumn(
+                            modifier = Modifier
+                                .weight(1.1f)
+                                .fillMaxHeight(),
+                            contentPadding = PaddingValues(bottom = 16.dp),
+                            verticalArrangement = Arrangement.spacedBy(12.dp)
+                        ) {
+                            items(savedSessions, key = { it.id }) { session ->
+                                WorkoutSessionCard(
+                                    session = session,
+                                    onClick = { onSessionClick(session) },
+                                    onDelete = { onDeleteSession(session.id) }
+                                )
+                            }
                         }
+
+                        // Right Column: Summary Bar Chart
+                        WorkoutHistoryBarChart(
+                            sessions = savedSessions,
+                            modifier = Modifier
+                                .weight(0.9f)
+                                .fillMaxHeight()
+                                .padding(bottom = 16.dp)
+                        )
                     }
                 }
             }
 
-            HorizontalFloatingToolbar(
-                modifier = Modifier.padding(bottom = 16.dp)
+            // Single Outer Surface Toolbar Container
+            Surface(
+                modifier = Modifier.padding(bottom = 16.dp),
+                shape = CircleShape,
+                color = MaterialTheme.colorScheme.surfaceContainerHigh,
+                tonalElevation = 6.dp,
+                shadowElevation = 8.dp
             ) {
-                if (!isRunning) {
-                    FilledIconButton(
-                        onClick = onStart,
-                        modifier = Modifier.size(56.dp),
-                        shape = CircleShape,
-                        colors = IconButtonDefaults.filledIconButtonColors(
-                            containerColor = MaterialTheme.colorScheme.primary,
-                            contentColor = MaterialTheme.colorScheme.onPrimary
-                        )
-                    ) {
-                        Icon(
-                            imageVector = Icons.Default.PlayArrow,
-                            contentDescription = stringResource(R.string.desc_start_training),
-                            modifier = Modifier.size(32.dp)
-                        )
-                    }
-                } else {
-                    FilledIconButton(
-                        onClick = onPauseToggle,
-                        modifier = Modifier.size(56.dp),
-                        shape = CircleShape,
-                        colors = IconButtonDefaults.filledIconButtonColors(
-                            containerColor = MaterialTheme.colorScheme.primaryContainer,
-                            contentColor = MaterialTheme.colorScheme.onPrimaryContainer
-                        )
-                    ) {
-                        Icon(
-                            imageVector = if (isPaused) Icons.Default.PlayArrow else Icons.Default.Pause,
-                            contentDescription = if (isPaused) stringResource(R.string.desc_resume_training) else stringResource(R.string.desc_pause_training),
-                            modifier = Modifier.size(32.dp)
-                        )
-                    }
+                Row(
+                    modifier = Modifier.padding(horizontal = 8.dp, vertical = 6.dp),
+                    horizontalArrangement = Arrangement.spacedBy(12.dp, Alignment.CenterHorizontally),
+                    verticalAlignment = Alignment.CenterVertically
+                ) {
+                    if (!isRunning) {
+                        FilledIconButton(
+                            onClick = onStart,
+                            modifier = Modifier.size(56.dp),
+                            shape = CircleShape,
+                            colors = IconButtonDefaults.filledIconButtonColors(
+                                containerColor = MaterialTheme.colorScheme.primary,
+                                contentColor = MaterialTheme.colorScheme.onPrimary
+                            )
+                        ) {
+                            Icon(
+                                imageVector = Icons.Default.PlayArrow,
+                                contentDescription = stringResource(R.string.desc_start_training),
+                                modifier = Modifier.size(32.dp)
+                            )
+                        }
+                    } else {
+                        // Prominent Inner Highlighted Group for Pause & Stop Controls
+                        Surface(
+                            shape = CircleShape,
+                            color = MaterialTheme.colorScheme.surfaceContainerHighest,
+                            tonalElevation = 2.dp
+                        ) {
+                            Row(
+                                modifier = Modifier.padding(horizontal = 8.dp, vertical = 4.dp),
+                                horizontalArrangement = Arrangement.spacedBy(12.dp, Alignment.CenterHorizontally),
+                                verticalAlignment = Alignment.CenterVertically
+                            ) {
+                                FilledIconButton(
+                                    onClick = onPauseToggle,
+                                    modifier = Modifier.size(56.dp),
+                                    shape = CircleShape,
+                                    colors = IconButtonDefaults.filledIconButtonColors(
+                                        containerColor = MaterialTheme.colorScheme.primaryContainer,
+                                        contentColor = MaterialTheme.colorScheme.onPrimaryContainer
+                                    )
+                                ) {
+                                    Icon(
+                                        imageVector = if (isPaused) Icons.Default.PlayArrow else Icons.Default.Pause,
+                                        contentDescription = if (isPaused) stringResource(R.string.desc_resume_training) else stringResource(R.string.desc_pause_training),
+                                        modifier = Modifier.size(32.dp)
+                                    )
+                                }
 
-                    FilledIconButton(
-                        onClick = onStop,
-                        modifier = Modifier.size(56.dp),
-                        shape = CircleShape,
-                        colors = IconButtonDefaults.filledIconButtonColors(
-                            containerColor = MaterialTheme.colorScheme.error,
-                            contentColor = MaterialTheme.colorScheme.onError
-                        )
-                    ) {
-                        Icon(
-                            imageVector = Icons.Default.Stop,
-                            contentDescription = stringResource(R.string.desc_stop_training),
-                            modifier = Modifier.size(32.dp)
-                        )
-                    }
+                                FilledIconButton(
+                                    onClick = onStop,
+                                    modifier = Modifier.size(56.dp),
+                                    shape = CircleShape,
+                                    colors = IconButtonDefaults.filledIconButtonColors(
+                                        containerColor = MaterialTheme.colorScheme.error,
+                                        contentColor = MaterialTheme.colorScheme.onError
+                                    )
+                                ) {
+                                    Icon(
+                                        imageVector = Icons.Default.Stop,
+                                        contentDescription = stringResource(R.string.desc_stop_training),
+                                        modifier = Modifier.size(32.dp)
+                                    )
+                                }
+                            }
+                        }
 
-                    FilledIconButton(
-                        onClick = onOpenHistory,
-                        modifier = Modifier.size(56.dp),
-                        shape = CircleShape,
-                        colors = IconButtonDefaults.filledIconButtonColors(
-                            containerColor = MaterialTheme.colorScheme.surfaceContainerHighest,
-                            contentColor = MaterialTheme.colorScheme.onSurfaceVariant
-                        )
-                    ) {
-                        Icon(
-                            imageVector = Icons.Default.History,
-                            contentDescription = stringResource(R.string.title_history),
-                            modifier = Modifier.size(32.dp)
-                        )
+                        // History Button inside the SAME outer Surface
+                        FilledIconButton(
+                            onClick = onOpenHistory,
+                            modifier = Modifier.size(56.dp),
+                            shape = CircleShape,
+                            colors = IconButtonDefaults.filledIconButtonColors(
+                                containerColor = Color.Transparent,
+                                contentColor = MaterialTheme.colorScheme.onSurfaceVariant
+                            )
+                        ) {
+                            Icon(
+                                imageVector = Icons.Default.History,
+                                contentDescription = stringResource(R.string.title_history),
+                                modifier = Modifier.size(32.dp)
+                            )
+                        }
                     }
                 }
             }
@@ -545,27 +587,6 @@ fun TimeProgressIndicator(
                 color = MaterialTheme.colorScheme.outline
             )
         }
-    }
-}
-
-@Composable
-fun HorizontalFloatingToolbar(
-    modifier: Modifier = Modifier,
-    content: @Composable RowScope.() -> Unit
-) {
-    Surface(
-        modifier = modifier,
-        shape = CircleShape,
-        color = MaterialTheme.colorScheme.surfaceContainerHigh,
-        tonalElevation = 6.dp,
-        shadowElevation = 8.dp
-    ) {
-        Row(
-            modifier = Modifier.padding(horizontal = 12.dp, vertical = 8.dp),
-            horizontalArrangement = Arrangement.spacedBy(12.dp, Alignment.CenterHorizontally),
-            verticalAlignment = Alignment.CenterVertically,
-            content = content
-        )
     }
 }
 
@@ -769,7 +790,7 @@ fun TrackingControlScreenRunningPreview() {
 }
 
 @Preview(
-    name = "Entrenamiento Detenido con Histórico",
+    name = "Entrenamiento Detenido con Histórico y Gráfico de Barras",
     device = "spec:width=1280dp,height=800dp,dpi=240,orientation=landscape",
     showBackground = true,
     uiMode = Configuration.UI_MODE_NIGHT_YES
@@ -790,6 +811,136 @@ fun TrackingControlScreenPreview() {
             avgRpm = 82,
             maxRpm = 115,
             avgResistance = 4.5
+        ),
+        WorkoutSessionEntity(
+            id = 2,
+            userId = 1,
+            timestamp = System.currentTimeMillis() - 172800000L,
+            durationSeconds = 1200L,
+            totalDistance = 5100,
+            totalCalories = 310,
+            avgPower = 180,
+            maxPower = 310,
+            avgRpm = 88,
+            maxRpm = 120,
+            avgResistance = 5.0
+        )
+    )
+    FreeVolabaTheme {
+        Surface(
+            modifier = Modifier.fillMaxSize(),
+            color = MaterialTheme.colorScheme.background
+        ) {
+            TrackingControlContent(
+                activeUser = sampleUser,
+                savedSessions = sampleSessions,
+                isRunning = false,
+                isPaused = false,
+                trainingData = TrainingData(),
+                elapsedTime = 0L,
+                historyPoints = emptyList(),
+                onStart = {},
+                onPauseToggle = {},
+                onStop = {},
+                onSwitchUser = {},
+                onEditProfile = {},
+                onCreateNewUser = {},
+                onOpenHistory = {},
+                onSessionClick = {},
+                onDeleteSession = {}
+            )
+        }
+    }
+}
+
+@Preview(
+    name = "Entrenamiento Detenido con Varias Semanas de Ejercicios",
+    device = "spec:width=1280dp,height=800dp,dpi=240,orientation=landscape",
+    showBackground = true,
+    uiMode = Configuration.UI_MODE_NIGHT_YES
+)
+@Composable
+fun TrackingControlScreenMultipleBarsPreview() {
+    val sampleUser = UserEntity(id = 1, name = "Alex", avatarId = "face_teal")
+    val dayMillis = 86400000L
+    val sampleSessions = listOf(
+        WorkoutSessionEntity(
+            id = 1,
+            userId = 1,
+            timestamp = System.currentTimeMillis() - 35 * dayMillis,
+            durationSeconds = 1800L,
+            totalDistance = 8500,
+            totalCalories = 420,
+            avgPower = 175,
+            maxPower = 290,
+            avgRpm = 84,
+            maxRpm = 118,
+            avgResistance = 4.8
+        ),
+        WorkoutSessionEntity(
+            id = 2,
+            userId = 1,
+            timestamp = System.currentTimeMillis() - 28 * dayMillis,
+            durationSeconds = 2400L,
+            totalDistance = 11200,
+            totalCalories = 580,
+            avgPower = 190,
+            maxPower = 310,
+            avgRpm = 88,
+            maxRpm = 122,
+            avgResistance = 5.2
+        ),
+        WorkoutSessionEntity(
+            id = 3,
+            userId = 1,
+            timestamp = System.currentTimeMillis() - 21 * dayMillis,
+            durationSeconds = 1500L,
+            totalDistance = 7100,
+            totalCalories = 360,
+            avgPower = 168,
+            maxPower = 270,
+            avgRpm = 80,
+            maxRpm = 112,
+            avgResistance = 4.5
+        ),
+        WorkoutSessionEntity(
+            id = 4,
+            userId = 1,
+            timestamp = System.currentTimeMillis() - 14 * dayMillis,
+            durationSeconds = 2700L,
+            totalDistance = 13500,
+            totalCalories = 690,
+            avgPower = 205,
+            maxPower = 340,
+            avgRpm = 92,
+            maxRpm = 128,
+            avgResistance = 5.8
+        ),
+        WorkoutSessionEntity(
+            id = 5,
+            userId = 1,
+            timestamp = System.currentTimeMillis() - 7 * dayMillis,
+            durationSeconds = 2100L,
+            totalDistance = 9800,
+            totalCalories = 510,
+            avgPower = 182,
+            maxPower = 300,
+            avgRpm = 85,
+            maxRpm = 119,
+            avgResistance = 5.0
+        ),
+        WorkoutSessionEntity(
+            id = 6,
+            userId = 1,
+            timestamp = System.currentTimeMillis() - 1 * dayMillis,
+            durationSeconds = 1200L,
+            totalDistance = 5400,
+            totalCalories = 310,
+            avgPower = 178,
+            maxPower = 285,
+            avgRpm = 83,
+            maxRpm = 116,
+            avgResistance = 4.6
         )
     )
     FreeVolabaTheme {

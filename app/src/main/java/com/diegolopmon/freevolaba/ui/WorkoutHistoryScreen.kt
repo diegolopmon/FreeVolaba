@@ -5,9 +5,9 @@ import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
-import androidx.compose.foundation.layout.PaddingValues
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
+import androidx.compose.foundation.layout.fillMaxHeight
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
@@ -107,20 +107,36 @@ fun WorkoutHistoryScreen(
                 }
             }
         } else {
-            LazyColumn(
+            Row(
                 modifier = Modifier
                     .fillMaxSize()
-                    .padding(innerPadding),
-                contentPadding = PaddingValues(16.dp),
-                verticalArrangement = Arrangement.spacedBy(12.dp)
+                    .padding(innerPadding)
+                    .padding(16.dp),
+                horizontalArrangement = Arrangement.spacedBy(16.dp)
             ) {
-                items(sessions, key = { it.id }) { session ->
-                    WorkoutSessionCard(
-                        session = session,
-                        onClick = { onSessionClick(session) },
-                        onDelete = { onDeleteSession(session.id) }
-                    )
+                // Left Column: List of exercises
+                LazyColumn(
+                    modifier = Modifier
+                        .weight(1.1f)
+                        .fillMaxHeight(),
+                    verticalArrangement = Arrangement.spacedBy(12.dp)
+                ) {
+                    items(sessions, key = { it.id }) { session ->
+                        WorkoutSessionCard(
+                            session = session,
+                            onClick = { onSessionClick(session) },
+                            onDelete = { onDeleteSession(session.id) }
+                        )
+                    }
                 }
+
+                // Right Column: Summary Bar Chart
+                WorkoutHistoryBarChart(
+                    sessions = sessions,
+                    modifier = Modifier
+                        .weight(0.9f)
+                        .fillMaxHeight()
+                )
             }
         }
     }
@@ -157,12 +173,12 @@ fun WorkoutSessionCard(
                 color = MaterialTheme.colorScheme.primary
             )
 
-            Spacer(modifier = Modifier.width(64.dp))
+            Spacer(modifier = Modifier.width(16.dp))
 
             // Concise metrics row: Duration, Calories, Avg Power
             Row(
                 modifier = Modifier.weight(1f),
-                horizontalArrangement = Arrangement.spacedBy(16.dp),
+                horizontalArrangement = Arrangement.spacedBy(12.dp),
                 verticalAlignment = Alignment.CenterVertically
             ) {
                 MetricBadge(
@@ -186,7 +202,7 @@ fun WorkoutSessionCard(
                     tint = MaterialTheme.colorScheme.onSurfaceVariant
                 )
             }
-            Spacer(modifier = Modifier.width(16.dp))
+            Spacer(modifier = Modifier.width(8.dp))
             Icon(
                 imageVector = Icons.Default.ChevronRight,
                 contentDescription = null,
@@ -218,7 +234,6 @@ fun WorkoutSessionCard(
         )
     }
 }
-
 
 @Composable
 private fun MetricBadge(

@@ -65,4 +65,11 @@
     <string name="action_rotate">Rotate 90°</string>
     <string name="action_crop">Apply Crop</string>
     <string name="action_edit_crop">Edit Crop</string>
+
+    <string name="label_weeks">Weeks</string>
+    <string name="label_months">Months</string>
+    <string name="label_calories_short">Calories</string>
+    <string name="label_time_short">Time</string>
+    <string name="chart_summary_title">Workout Summary</string>
+    <string name="no_chart_data">No data for period</string>
 </resources>
